@@ -24,8 +24,27 @@ POS, NEG, DIM = "#22c55e", "#ef4444", "#9ca3af"
 
 @st.cache_data(ttl=21600, show_spinner=False)
 def load_signals():
+    """사전계산 캐시(data/signals.json) 우선 로드 → 없으면 라이브 계산."""
+    import json
+    from pathlib import Path
+    cache = Path(__file__).resolve().parent / "data" / "signals.json"
+    if cache.exists():
+        try:
+            d = json.loads(cache.read_text(encoding="utf-8"))
+            d["equity"] = pd.Series(
+                d["equity"]["values"],
+                index=pd.to_datetime(d["equity"]["dates"]))
+            d["kospi"] = pd.Series(
+                d["kospi"]["values"],
+                index=pd.to_datetime(d["kospi"]["dates"]))
+            d["_cached"] = True
+            return d
+        except Exception:
+            pass
     from isa_signals import get_isa_signals
-    return get_isa_signals()
+    s = get_isa_signals()
+    s["_cached"] = False
+    return s
 
 
 def risk_color(room):
@@ -56,6 +75,9 @@ def main():
         f"<b>기준일</b> {asof} (KRW)  |  설정 N={p['N']} · 손절폭 p={p['p']} · "
         f"롱온리 · 무레버리지  |  벤치마크: KOSPI200 매수보유</div>",
         unsafe_allow_html=True)
+    gen = s.get("_generated_kst")
+    if gen and s.get("_cached"):
+        st.caption(f"⚡ 매일 자동 갱신 (사전계산) — 마지막 갱신: {gen}")
     st.write("")
 
     # ── 요약 지표 ──
