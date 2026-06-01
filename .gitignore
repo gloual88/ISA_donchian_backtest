@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 환경/비밀 (혹시라도)
+.env
+.venv/
+venv/
+.streamlit/secrets.toml
+
+# 영상 제작 자산(비공개 — 슬라이드/스크립트/브랜딩)
+video/
+
+# OS
+.DS_Store
+Thumbs.db
