@@ -89,6 +89,18 @@ def get_isa_signals():
     scal = kr.std() / sr.std() if sr.std() > 0 else 1.0
     eq_sc = (1 + sr * scal).cumprod()
 
+    # ── 벤치마크: 동일가중 바스켓 + 60/40 (KOSPI는 참고) ──
+    rets = close.pct_change()
+    ew = (1 + rets.mean(axis=1).fillna(0)).cumprod()
+    ew = ew.reindex(eq.index).ffill()
+    ew = ew / ew.iloc[0]
+    eq_cols = [c for c in labels if ISA_DEF[c][2] == "주식"]
+    bd_cols = [c for c in labels if ISA_DEF[c][2] == "금리"]
+    sf_ret = (0.6 * rets[eq_cols].mean(axis=1)
+              + 0.4 * rets[bd_cols].mean(axis=1)).fillna(0)
+    sf = (1 + sf_ret).cumprod().reindex(eq.index).ffill()
+    sf = sf / sf.iloc[0]
+
     pos = res["positions"].copy()
     nl_w, cash_pct = _compute_nolev(pos)
 
@@ -120,12 +132,15 @@ def get_isa_signals():
         params=PARAMS,
         cash_pct=cash_pct,
         n_positions=len(positions),
-        metrics=dict(strategy=_metrics(eq_sc), kospi=_metrics(kospi)),
+        metrics=dict(strategy=_metrics(eq_sc), sixty_forty=_metrics(sf),
+                     ew_basket=_metrics(ew), kospi=_metrics(kospi)),
         positions=positions,
         buy_today=buy_today,
         stop_today=stop_today,
         near_stop=near_stop,
         equity=eq_sc,
+        sixty_forty=sf,
+        ew_basket=ew,
         kospi=kospi,
     )
 

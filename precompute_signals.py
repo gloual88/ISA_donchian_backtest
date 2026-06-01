@@ -46,6 +46,8 @@ def main():
         "asof", "params", "cash_pct", "n_positions", "metrics",
         "positions", "buy_today", "stop_today", "near_stop")}
     payload["equity"] = _series_to_obj(s["equity"])
+    payload["sixty_forty"] = _series_to_obj(s["sixty_forty"])
+    payload["ew_basket"] = _series_to_obj(s["ew_basket"])
     payload["kospi"] = _series_to_obj(s["kospi"])
     payload["_generated_kst"] = pd.Timestamp.now(
         tz="Asia/Seoul").strftime("%Y-%m-%d %H:%M KST")

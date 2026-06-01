@@ -31,12 +31,11 @@ def load_signals():
     if cache.exists():
         try:
             d = json.loads(cache.read_text(encoding="utf-8"))
-            d["equity"] = pd.Series(
-                d["equity"]["values"],
-                index=pd.to_datetime(d["equity"]["dates"]))
-            d["kospi"] = pd.Series(
-                d["kospi"]["values"],
-                index=pd.to_datetime(d["kospi"]["dates"]))
+            for key in ("equity", "sixty_forty", "ew_basket", "kospi"):
+                if key in d and isinstance(d[key], dict):
+                    d[key] = pd.Series(
+                        d[key]["values"],
+                        index=pd.to_datetime(d[key]["dates"]))
             d["_cached"] = True
             return d
         except Exception:
@@ -67,6 +66,7 @@ def main():
 
     asof = s["asof"]
     mst, mks = s["metrics"]["strategy"], s["metrics"]["kospi"]
+    mbf = s["metrics"].get("sixty_forty", mks)
     p = s["params"]
 
     st.markdown(
@@ -83,9 +83,9 @@ def main():
     # ── 요약 지표 ──
     k = st.columns(6)
     k[0].metric("전략 Sharpe", f"{mst['Sharpe']:.2f}",
-                f"{mst['Sharpe']-mks['Sharpe']:+.2f} vs KOSPI")
+                f"{mst['Sharpe']-mbf['Sharpe']:+.2f} vs 60/40")
     k[1].metric("CAGR", f"{mst['CAGR']*100:.1f}%",
-                f"{(mst['CAGR']-mks['CAGR'])*100:+.1f}%p")
+                f"{(mst['CAGR']-mbf['CAGR'])*100:+.1f}%p")
     k[2].metric("MDD", f"{mst['MDD']*100:.1f}%",
                 f"{(mst['MDD']-mks['MDD'])*100:+.1f}%p", delta_color="normal")
     k[3].metric("변동성", f"{mst['vol']*100:.1f}%")
@@ -199,14 +199,24 @@ def main():
         st.plotly_chart(fig2, width="stretch")
 
     with g2:
-        st.markdown("### 📈 누적성과 vs KOSPI200")
+        st.markdown("### 📈 누적성과 vs 벤치마크")
         eq, ks = s["equity"], s["kospi"]
+        sf = s.get("sixty_forty")
+        ew = s.get("ew_basket")
         fig3 = go.Figure()
         fig3.add_trace(go.Scatter(x=eq.index, y=eq.values, name="ISA 롱온리",
-                                  line=dict(color="#7c3aed", width=2)))
+                                  line=dict(color="#7c3aed", width=2.2)))
+        if sf is not None:
+            fig3.add_trace(go.Scatter(x=sf.index, y=sf.values, name="60/40",
+                                      line=dict(color="#f59e0b", width=1.4)))
+        if ew is not None:
+            fig3.add_trace(go.Scatter(x=ew.index, y=ew.values,
+                                      name="동일가중 바스켓",
+                                      line=dict(color="#16a34a", width=1.4)))
         fig3.add_trace(go.Scatter(x=ks.index, y=ks.values,
-                                  name="KOSPI200 매수보유",
-                                  line=dict(color="#dc2626", width=1.5)))
+                                  name="KOSPI200 (참고)",
+                                  line=dict(color="#6b7280", width=1,
+                                            dash="dot")))
         fig3.update_layout(
             template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)",
             plot_bgcolor="rgba(0,0,0,0)", height=360,
@@ -214,6 +224,42 @@ def main():
             xaxis=dict(gridcolor="#1a1f2e"),
             legend=dict(x=0.02, y=0.98), margin=dict(t=10, b=10))
         st.plotly_chart(fig3, width="stretch")
+
+    # ── 💹 수익률 현황 (기준일 이후) — 맨 하단 ──
+    st.markdown("---")
+    from return_status import compute_status, ANCHOR
+    rc = {"전략": s.get("equity"), "60/40": s.get("sixty_forty"),
+          "동일가중바스켓": s.get("ew_basket"), "KOSPI200(참고)": s.get("kospi")}
+    rc = {k: v for k, v in rc.items() if v is not None}
+    if "전략" in rc:
+        rstats = {k: compute_status(v, ANCHOR) for k, v in rc.items()}
+        st0 = rstats["전략"]
+        st.markdown(f"### 💹 수익률 현황 — 기준일 {st0['anchor_date']} 이후 "
+                    f"({st0['trading_days']}거래일)")
+        cmap = {"전략": "#7c3aed", "60/40": "#f59e0b",
+                "동일가중바스켓": "#16a34a", "KOSPI200(참고)": "#6b7280"}
+        cc = st.columns(len(rstats))
+        for col, (name, m) in zip(cc, rstats.items()):
+            col.metric(f"{name}", f"{m['cum_return']*100:+.1f}%",
+                       f"당일 {m['daily_return']*100:+.2f}%")
+        fig4 = go.Figure()
+        for name, v in rc.items():
+            seg = v[v.index >= pd.Timestamp(rstats[name]["anchor_date"])]
+            seg = (seg / seg.iloc[0] - 1) * 100
+            fig4.add_trace(go.Scatter(
+                x=seg.index, y=seg.values, name=name,
+                line=dict(color=cmap.get(name, "#999"),
+                          width=2.4 if name == "전략" else 1.4,
+                          dash="dot" if "참고" in name else "solid")))
+        fig4.update_layout(
+            template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)", height=340,
+            yaxis=dict(title="기준일 이후 누적수익률 %", gridcolor="#1a1f2e"),
+            xaxis=dict(gridcolor="#1a1f2e"),
+            legend=dict(x=0.02, y=0.98), margin=dict(t=10, b=10))
+        st.plotly_chart(fig4, width="stretch")
+        st.caption(f"기준일 {ANCHOR} 이후 누적·당일 수익률. "
+                   "전략 vs 60/40·동일가중바스켓(공정비교) · KOSPI200은 참고.")
 
     # ── 면책 ──
     st.markdown("---")

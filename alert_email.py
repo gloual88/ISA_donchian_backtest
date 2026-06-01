@@ -29,17 +29,37 @@ def _rows(items, fmt):
     return "".join(f"<li>{fmt(i)}</li>" for i in items) or "<li>없음</li>"
 
 
-def build_report(asof, s, eq, ks):
-    st = compute_status(eq, ANCHOR)
-    sk = compute_status(ks, ANCHOR)
+LABELS = {"strategy": "전략", "sixty_forty": "60/40",
+          "ew_basket": "동일가중바스켓", "kospi": "KOSPI200(참고)"}
+
+
+def build_report(asof, s, curves):
+    stats = {n: compute_status(c, ANCHOR) for n, c in curves.items()}
+    st = stats["strategy"]
     buys = s.get("buy_today", [])
     stops = s.get("stop_today", [])
     near = [n for n in s.get("near_stop", []) if n["stop_room_pct"] < NEAR]
     n_act = len(buys) + len(stops) + len(near)
 
-    def cell(v, good_pos=True):
-        c = "#16a34a" if (v >= 0) == good_pos else "#dc2626"
+    def cell(v):
+        c = "#16a34a" if v >= 0 else "#dc2626"
         return f"<b style='color:{c}'>{v*100:+.2f}%</b>"
+
+    def row(name):
+        m = stats[name]
+        nm = f"<b>{LABELS[name]}</b>" if name == "strategy" else LABELS[name]
+        return (f"<tr><td>{nm}</td>"
+                f"<td align=right>{cell(m['daily_return'])}</td>"
+                f"<td align=right>{cell(m['cum_return'])}</td>"
+                f"<td align=right>{m['mdd_since']*100:.1f}%</td></tr>")
+
+    rows_html = "".join(
+        row(n) for n in ["strategy", "sixty_forty", "ew_basket", "kospi"]
+        if n in stats)
+    excess = ""
+    if "sixty_forty" in stats:
+        d = (st['cum_return'] - stats['sixty_forty']['cum_return']) * 100
+        excess = f"기준일 이후 초과수익(전략−60/40): <b>{d:+.1f}%p</b> · "
 
     subj = (f"[ISA 추세전략] 일일 리포트 {asof} — "
             f"기준일이후 {st['cum_return']*100:+.1f}% / 액션 {n_act}건")
@@ -54,17 +74,9 @@ def build_report(asof, s, eq, ks):
       <table cellpadding="7" style="border-collapse:collapse;font-size:0.9rem">
         <tr style="background:#f3f0ff">
           <th></th><th>당일</th><th>기준일 이후 누적</th><th>기준후 MDD</th></tr>
-        <tr><td><b>전략</b></td>
-          <td align=right>{cell(st['daily_return'])}</td>
-          <td align=right>{cell(st['cum_return'])}</td>
-          <td align=right>{st['mdd_since']*100:.1f}%</td></tr>
-        <tr><td>KOSPI200</td>
-          <td align=right>{cell(sk['daily_return'])}</td>
-          <td align=right>{cell(sk['cum_return'])}</td>
-          <td align=right>{sk['mdd_since']*100:.1f}%</td></tr>
+        {rows_html}
       </table>
-      <p style="font-size:0.85rem;color:#555">기준일 이후 초과수익(전략−KOSPI):
-        <b>{(st['cum_return']-sk['cum_return'])*100:+.1f}%p</b> ·
+      <p style="font-size:0.85rem;color:#555">{excess}
         보유 {s['n_positions']}종목 · 현금 {max(s['cash_pct'],0):.0f}%</p>
 
       <h3>🔔 오늘의 액션 ({n_act}건)</h3>
@@ -85,14 +97,14 @@ def build_report(asof, s, eq, ks):
 
 
 def main():
-    asof, eq, ks = load_curves()
+    asof, curves = load_curves()
     import json
     from pathlib import Path
     s = json.loads(
         (Path(__file__).resolve().parent / "data" / "signals.json")
         .read_text(encoding="utf-8"))
 
-    subj, html = build_report(asof, s, eq, ks)
+    subj, html = build_report(asof, s, curves)
 
     user = os.getenv("EMAIL_USER")
     pw = os.getenv("EMAIL_PASS")
