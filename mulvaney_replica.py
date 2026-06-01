@@ -49,7 +49,6 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import yfinance as yf
-import pandas_datareader.data as web
 
 plt.rcParams["font.family"] = "Malgun Gothic"
 plt.rcParams["axes.unicode_minus"] = False
@@ -92,21 +91,29 @@ def load_universe():
 
 
 def load_cash_rate(index) -> pd.Series:
-    """담보현금 일수익률(소수) = FF RF(daily) - 100bps/252."""
+    """
+    담보현금 일수익률(소수) = 무위험수익률 - 100bps/252.
+    FRED 3개월 국채(DTB3)를 CSV로 직접 호출(키 불필요). 실패 시 상수(연 3%).
+    pandas_datareader 의존 제거 — Python 3.12+/배포환경 호환.
+    """
     daily_spread = CASH_SPREAD / TRADING_DAYS
+    const = pd.Series(0.03 / TRADING_DAYS, index=index)  # 폴백: 연 3%
+    rf = None
     try:
-        ff = web.DataReader("F-F_Research_Data_Factors_daily",
-                            "famafrench", start="1999-01-01")[0]
-        rf = ff["RF"] / 100.0
-        rf.index = pd.to_datetime(rf.index)
-    except Exception as e:
-        print(f"[경고] FF RF 실패({e}) → FRED 3M 폴백")
-        try:
-            tb = web.DataReader("DTB3", "fred", start="1999-01-01")["DTB3"]
-            rf = (tb / 100.0) / TRADING_DAYS
-        except Exception:
-            rf = pd.Series(0.0, index=index)
-    rf = rf.reindex(index.union(rf.index)).ffill().reindex(index).fillna(0)
+        url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=DTB3"
+        raw = pd.read_csv(url)
+        raw.columns = ["date", "rate"]
+        raw["date"] = pd.to_datetime(raw["date"], errors="coerce")
+        raw["rate"] = pd.to_numeric(raw["rate"], errors="coerce")
+        s = raw.dropna().set_index("date")["rate"]
+        if not s.empty:
+            rf = (s / 100.0) / TRADING_DAYS    # 연율% → 일별 소수
+    except Exception:
+        rf = None
+    if rf is None:
+        rf = const
+    rf = (rf.reindex(index.union(rf.index)).ffill()
+          .reindex(index).fillna(0.03 / TRADING_DAYS))
     return (rf - daily_spread).rename("cash_rate")
 
 

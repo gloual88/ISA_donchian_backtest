@@ -3,7 +3,5 @@ pandas
 numpy
 plotly
 yfinance
-pandas-datareader
 matplotlib
 certifi
-lxml
