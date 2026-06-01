@@ -29,6 +29,15 @@ jobs:
       - name: Precompute signals
         run: python precompute_signals.py
 
+      - name: Send action alert (email)
+        env:
+          EMAIL_USER: ${{ secrets.EMAIL_USER }}
+          EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
+          NEAR_STOP_PCT: "3.0"
+        run: python alert_email.py
+
       - name: Commit updated signals
         run: |
           git config user.name "github-actions[bot]"
