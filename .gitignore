@@ -13,6 +13,9 @@ venv/
 # 영상 제작 자산(비공개 — 슬라이드/스크립트/브랜딩)
 video/
 
+# KRX 검증 캐시(대용량)
+krx_cache/
+
 # OS
 .DS_Store
 Thumbs.db
