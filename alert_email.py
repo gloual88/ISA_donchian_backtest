@@ -106,10 +106,13 @@ def main():
 
     subj, html = build_report(asof, s, curves)
 
-    user = os.getenv("EMAIL_USER")
-    pw = os.getenv("EMAIL_PASS")
-    to = os.getenv("EMAIL_TO") or user
-    if not (user and pw):
+    import re
+    user = (os.getenv("EMAIL_USER") or "").strip()
+    pw = (os.getenv("EMAIL_PASS") or "").replace(" ", "").strip()
+    to_raw = (os.getenv("EMAIL_TO") or user)
+    # 줄바꿈/쉼표/세미콜론 모두 허용 → 정제된 수신자 리스트
+    recipients = [a.strip() for a in re.split(r"[,\n;]+", to_raw) if a.strip()]
+    if not (user and pw and recipients):
         print("EMAIL_USER/EMAIL_PASS 미설정 — 발송 생략(드라이런)")
         print("제목:", subj)
         return
@@ -117,14 +120,14 @@ def main():
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subj
     msg["From"] = user
-    msg["To"] = to
+    msg["To"] = ", ".join(recipients)
     msg.attach(MIMEText(html, "html", "utf-8"))
     ctx = ssl.create_default_context()
     with smtplib.SMTP("smtp.gmail.com", 587) as srv:
         srv.starttls(context=ctx)
         srv.login(user, pw)
-        srv.send_message(msg)
-    print(f"발송 완료 → {to} | {subj}")
+        srv.send_message(msg, to_addrs=recipients)
+    print(f"발송 완료 → {', '.join(recipients)} | {subj}")
 
 
 if __name__ == "__main__":
