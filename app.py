@@ -73,7 +73,9 @@ def main():
         f"<div style='background:#0b1220;border:1px solid #1d4ed8;"
         f"padding:8px 14px;border-radius:8px;font-size:0.85rem;color:#d1d5db'>"
         f"<b>기준일</b> {asof} (KRW)  |  설정 N={p['N']} · 손절폭 p={p['p']} · "
-        f"롱온리 · 무레버리지  |  벤치마크: KOSPI200 매수보유</div>",
+        f"롱온리 · 무레버리지  |  벤치마크: 60/40·동일가중"
+        f"<br><span style='font-size:0.75rem;color:#9ca3af'>※ 국내자산은 "
+        f"당일 종가, 해외자산은 직전 미국 종가 반영(미국장 시차)</span></div>",
         unsafe_allow_html=True)
     gen = s.get("_generated_kst")
     if gen and s.get("_cached"):

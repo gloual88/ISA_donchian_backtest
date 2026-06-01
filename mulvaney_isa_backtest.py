@@ -75,12 +75,24 @@ def build_krw_panel():
     raw = yf.download(us, start="1999-01-01", auto_adjust=True,
                       progress=False)
     Hu, Lu, Cu = raw["High"], raw["Low"], raw["Close"]
-    master = Cu.dropna(how="all").index
 
     fx = yf.download("KRW=X", start="1999-01-01", auto_adjust=True,
                      progress=False)
     ks = yf.download("^KS200", start="1999-01-01", auto_adjust=True,
                      progress=False)
+
+    # 기준일을 '오늘'까지: 미국 마지막 종가 이후의 KR/FX 거래일을 꼬리에 추가
+    # (해외 자산은 직전 미국 종가를 ffill — 미국장 미개장 반영). 데이터 사정상
+    # KR 종가가 아직이면 자동으로 직전일까지만(몇 분 지연 허용).
+    master = Cu.dropna(how="all").index
+    last_us = master[-1]
+    tail = ks.dropna(how="all").index.union(fx.dropna(how="all").index)
+    tail = tail[tail > last_us]
+    if len(tail):
+        master = master.union(tail)
+    Hu = Hu.reindex(master).ffill()
+    Lu = Lu.reindex(master).ffill()
+    Cu = Cu.reindex(master).ffill()
 
     def reidx(df):
         return df.reindex(master).ffill()
