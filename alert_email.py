@@ -77,7 +77,7 @@ def build_report(asof, s, curves):
         {rows_html}
       </table>
       <p style="font-size:0.85rem;color:#555">{excess}
-        보유 {s['n_positions']}종목 · 현금 {max(s['cash_pct'],0):.0f}%</p>
+        보유 {s['n_positions']}종목 · 현금 {max(s['cash_pct'], 0):.0f}%</p>
 
       <h3>🔔 오늘의 액션 ({n_act}건)</h3>
       <p style="margin:4px 0;color:#16a34a"><b>🟢 신규 매수</b></p>
@@ -117,19 +117,28 @@ def main():
         print("제목:", subj)
         return
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subj
-    msg["From"] = user
-    # 다수 구독자 발송: 수신자 주소가 서로 노출되지 않도록 BCC 방식.
-    # To 헤더에는 발신자 본인만 표기하고, 실제 배달은 to_addrs로 처리.
-    msg["To"] = user
-    msg.attach(MIMEText(html, "html", "utf-8"))
+    # 다수 구독자: 1인씩 개별 발송 → 각 수신자는 To에 자기 주소만 보이고
+    # 다른 수신자의 존재/주소를 전혀 알 수 없음(상호 노출 0). 연결은 1회 재사용.
     ctx = ssl.create_default_context()
+    sent, failed = 0, []
     with smtplib.SMTP("smtp.gmail.com", 587) as srv:
         srv.starttls(context=ctx)
         srv.login(user, pw)
-        srv.send_message(msg, to_addrs=recipients)
-    print(f"발송 완료 (BCC {len(recipients)}명) | {subj}")
+        for rcpt in recipients:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subj
+            msg["From"] = user
+            msg["To"] = rcpt
+            msg.attach(MIMEText(html, "html", "utf-8"))
+            try:
+                srv.send_message(msg)
+                sent += 1
+            except Exception as e:  # noqa: BLE001 — 1명 실패해도 나머지 계속
+                failed.append(f"{rcpt}({e})")
+    line = f"발송 완료 {sent}/{len(recipients)}명 (개별 발송) | {subj}"
+    if failed:
+        line += f" | 실패: {', '.join(failed)}"
+    print(line)
 
 
 if __name__ == "__main__":
