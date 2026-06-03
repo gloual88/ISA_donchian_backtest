@@ -120,14 +120,16 @@ def main():
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subj
     msg["From"] = user
-    msg["To"] = ", ".join(recipients)
+    # 다수 구독자 발송: 수신자 주소가 서로 노출되지 않도록 BCC 방식.
+    # To 헤더에는 발신자 본인만 표기하고, 실제 배달은 to_addrs로 처리.
+    msg["To"] = user
     msg.attach(MIMEText(html, "html", "utf-8"))
     ctx = ssl.create_default_context()
     with smtplib.SMTP("smtp.gmail.com", 587) as srv:
         srv.starttls(context=ctx)
         srv.login(user, pw)
         srv.send_message(msg, to_addrs=recipients)
-    print(f"발송 완료 → {', '.join(recipients)} | {subj}")
+    print(f"발송 완료 (BCC {len(recipients)}명) | {subj}")
 
 
 if __name__ == "__main__":
