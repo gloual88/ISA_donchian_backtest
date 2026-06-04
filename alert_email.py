@@ -100,9 +100,19 @@ def main():
     asof, curves = load_curves()
     import json
     from pathlib import Path
+    here = Path(__file__).resolve().parent
     s = json.loads(
-        (Path(__file__).resolve().parent / "data" / "signals.json")
-        .read_text(encoding="utf-8"))
+        (here / "data" / "signals.json").read_text(encoding="utf-8"))
+
+    # 중복 발송 방지: 같은 종가일(asof)로 이미 보냈으면 생략(매일 1통 보장).
+    # 백업 cron이 같은 날 또 실행돼도 두 번째는 스킵. FORCE_EMAIL=1로 강제 가능.
+    signals_asof = str(s.get("asof", "")).strip()
+    state = here / "data" / "last_email_sent.txt"
+    last_sent = state.read_text(encoding="utf-8").strip() if state.exists() else ""
+    force = os.getenv("FORCE_EMAIL", "").strip().lower() not in ("", "0", "false")
+    if signals_asof and signals_asof == last_sent and not force:
+        print(f"이미 발송됨(종가일 {signals_asof}) — 중복 방지로 생략")
+        return
 
     subj, html = build_report(asof, s, curves)
 
@@ -139,6 +149,11 @@ def main():
     if failed:
         line += f" | 실패: {', '.join(failed)}"
     print(line)
+
+    # 발송 성공 시 종가일 기록(다음 백업 실행이 중복 발송하지 않도록)
+    if sent > 0 and signals_asof:
+        state.write_text(signals_asof, encoding="utf-8")
+        print(f"발송 기록 갱신: {state.name} = {signals_asof}")
 
 
 if __name__ == "__main__":
