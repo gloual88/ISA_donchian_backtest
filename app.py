@@ -50,6 +50,26 @@ def risk_color(room):
     return NEG if room < 3 else "#f59e0b" if room < 7 else POS
 
 
+def render_return_card(col, name, cum, daily, name_color):
+    """수익률 카드 — 누적/당일 각각이 자기 부호에 맞는 화살표·색을 갖는다.
+    (st.metric은 화살표·색이 delta=당일만 따라가, 누적이 음수인데 녹색 ▲가
+     뜨는 오해를 유발해 커스텀 렌더로 교체.)"""
+    c_col = POS if cum >= 0 else NEG
+    c_arw = "▲" if cum >= 0 else "▼"
+    d_col = POS if daily >= 0 else NEG
+    d_arw = "▲" if daily >= 0 else "▼"
+    col.markdown(
+        f"<div style='background:#0b1220;border:1px solid #1a1f2e;"
+        f"border-radius:8px;padding:10px 12px'>"
+        f"<div style='font-size:0.82rem;color:{name_color};"
+        f"font-weight:600'>{name}</div>"
+        f"<div style='font-size:1.5rem;font-weight:700;color:{c_col};"
+        f"line-height:1.6'>{c_arw} {cum*100:+.1f}%</div>"
+        f"<div style='font-size:0.78rem;color:{d_col}'>"
+        f"당일 {d_arw} {daily*100:+.2f}%</div>"
+        f"</div>", unsafe_allow_html=True)
+
+
 def main():
     st.markdown("## 📈 헤지펀드 추세전략 대시보드")
     st.caption("Mulvaney 복제 · 롱온리 · 무레버리지 · KRW — "
@@ -242,8 +262,8 @@ def main():
                 "동일가중바스켓": "#16a34a", "KOSPI200(참고)": "#6b7280"}
         cc = st.columns(len(rstats))
         for col, (name, m) in zip(cc, rstats.items()):
-            col.metric(f"{name}", f"{m['cum_return']*100:+.1f}%",
-                       f"당일 {m['daily_return']*100:+.2f}%")
+            render_return_card(col, name, m["cum_return"], m["daily_return"],
+                               cmap.get(name, "#e5e7eb"))
         fig4 = go.Figure()
         for name, v in rc.items():
             seg = v[v.index >= pd.Timestamp(rstats[name]["anchor_date"])]
