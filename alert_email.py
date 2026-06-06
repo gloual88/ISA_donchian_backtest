@@ -29,6 +29,34 @@ def _rows(items, fmt):
     return "".join(f"<li>{fmt(i)}</li>" for i in items) or "<li>없음</li>"
 
 
+def _transition_html():
+    """전략 전환 리밸런싱(1회성) — data/transition.json 있을 때만 블록 생성."""
+    import json
+    from pathlib import Path
+    p = Path(__file__).resolve().parent / "data" / "transition.json"
+    if not p.exists():
+        return ""
+    t = json.loads(p.read_text(encoding="utf-8"))
+    fp, tp = t["from_params"], t["to_params"]
+    items = ""
+    for r in t["rows"]:
+        if r["action"] == "유지":
+            continue
+        c = "#16a34a" if r["delta"] > 0 else "#dc2626"
+        items += (f"<li>{r['etf']} ({r['code']}) "
+                  f"<b style='color:{c}'>{r['action']} {r['delta']:+.1f}%p</b> "
+                  f"<span style='color:#888'>"
+                  f"{r['old_w']:.1f}%→{r['new_w']:.1f}%</span></li>")
+    if not items:
+        return ""
+    return (f"<h3>🔄 전략 전환 리밸런싱 (1회성)</h3>"
+            f"<p style='font-size:0.85rem;color:#555'>전략 변경 "
+            f"N={fp['N']}/lag={fp['lag']} → <b>N={tp['N']}/lag={tp['lag']}</b> "
+            f"(기준일 {t['asof']}). 구→신 전환을 위한 일회성 비중 조정이며, "
+            f"아래 '오늘의 액션'(신전략 자생 신호)과는 별개입니다.</p>"
+            f"<ul>{items}</ul>")
+
+
 LABELS = {"strategy": "전략", "sixty_forty": "60/40",
           "ew_basket": "동일가중바스켓", "kospi": "KOSPI200(참고)"}
 
@@ -79,6 +107,7 @@ def build_report(asof, s, curves):
       <p style="font-size:0.85rem;color:#555">{excess}
         보유 {s['n_positions']}종목 · 현금 {max(s['cash_pct'], 0):.0f}%</p>
 
+      {_transition_html()}
       <h3>🔔 오늘의 액션 ({n_act}건)</h3>
       <p style="margin:4px 0;color:#16a34a"><b>🟢 신규 매수</b></p>
       <ul>{_rows(buys, lambda b: f"{b['etf']} ({b['code']})")}</ul>

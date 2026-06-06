@@ -70,6 +70,35 @@ def render_return_card(col, name, cum, daily, name_color):
         f"</div>", unsafe_allow_html=True)
 
 
+def render_transition():
+    """전략 전환 리밸런싱(1회성) — data/transition.json 있을 때만 표시.
+    '오늘의 액션'(신전략 자생 신호)과 별개로, 구→신 전환에 필요한 비중 조정."""
+    import json
+    from pathlib import Path
+    p = Path(__file__).resolve().parent / "data" / "transition.json"
+    if not p.exists():
+        return
+    t = json.loads(p.read_text(encoding="utf-8"))
+    fp, tp = t["from_params"], t["to_params"]
+    st.markdown("### 🔄 전략 전환 리밸런싱 (1회성)")
+    st.info(f"전략 변경 N={fp['N']}/lag={fp['lag']} → "
+            f"**N={tp['N']}/lag={tp['lag']}** (기준일 {t['asof']}). 구→신 "
+            "포트폴리오로 갈아타기 위해 오늘 조정할 비중입니다. "
+            "※ 아래 '오늘의 액션'(신전략 자생 신호)과는 별개의 일회성 매매.")
+    df = pd.DataFrame([{
+        "ETF": r["etf"], "자산군": r["sector"], "구 비중%": r["old_w"],
+        "신 비중%": r["new_w"], "조정%p": r["delta"], "액션": r["action"]}
+        for r in t["rows"]])
+    st.dataframe(
+        df.style.format({"구 비중%": "{:.1f}", "신 비중%": "{:.1f}",
+                         "조정%p": "{:+.1f}"})
+        .background_gradient(subset=["조정%p"], cmap="RdYlGn",
+                             vmin=-6, vmax=6),
+        width="stretch", hide_index=True)
+    st.caption("반영 완료 후 data/transition.json 삭제 시 이 섹션은 사라집니다.")
+    st.markdown("---")
+
+
 def main():
     st.markdown("## 📈 헤지펀드 추세전략 대시보드")
     st.caption("Mulvaney 복제 · 롱온리 · 무레버리지 · KRW — "
@@ -115,6 +144,9 @@ def main():
     k[5].metric("현금", f"{max(s['cash_pct'],0):.0f}%")
 
     st.markdown("---")
+
+    # ── 전략 전환 리밸런싱 (1회성, transition.json 있을 때만) ──
+    render_transition()
 
     # ── 오늘의 액션 ──
     st.markdown("### 🔔 오늘의 액션")

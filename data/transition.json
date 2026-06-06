@@ -1,0 +1,102 @@
+{
+  "from_params": {
+    "N": 252,
+    "p": 0.4,
+    "lag": 1,
+    "cap": 2,
+    "K": 1
+  },
+  "to_params": {
+    "N": 189,
+    "p": 0.4,
+    "lag": 2,
+    "cap": 2,
+    "K": 1
+  },
+  "asof": "2026-06-06",
+  "old_cash": 0,
+  "new_cash": 0,
+  "generated_kst": "2026-06-06 09:08 KST",
+  "rows": [
+    {
+      "ticker": "신흥국(H)",
+      "etf": "PLUS 신흥국MSCI(합성 H)",
+      "code": "195980",
+      "sector": "주식",
+      "old_w": 11.6,
+      "new_w": 5.5,
+      "delta": -6.1,
+      "action": "매도"
+    },
+    {
+      "ticker": "WTI원유(H)",
+      "etf": "KODEX WTI원유선물(H)",
+      "code": "261220",
+      "sector": "원자재",
+      "old_w": 12.9,
+      "new_w": 17.9,
+      "delta": 5.0,
+      "action": "매수"
+    },
+    {
+      "ticker": "KOSPI200",
+      "etf": "KODEX 200",
+      "code": "069500",
+      "sector": "주식",
+      "old_w": 21.4,
+      "new_w": 25.7,
+      "delta": 4.3,
+      "action": "매수"
+    },
+    {
+      "ticker": "미국채10년",
+      "etf": "TIGER 미국채10년선물",
+      "code": "305080",
+      "sector": "금리",
+      "old_w": 21.6,
+      "new_w": 19.1,
+      "delta": -2.5,
+      "action": "매도"
+    },
+    {
+      "ticker": "나스닥100",
+      "etf": "TIGER 미국나스닥100",
+      "code": "133690",
+      "sector": "주식",
+      "old_w": 8.1,
+      "new_w": 7.7,
+      "delta": -0.4,
+      "action": "유지"
+    },
+    {
+      "ticker": "미국채30년",
+      "etf": "PLUS 미국채30년액티브",
+      "code": "464470",
+      "sector": "금리",
+      "old_w": 7.8,
+      "new_w": 8.2,
+      "delta": 0.4,
+      "action": "유지"
+    },
+    {
+      "ticker": "러셀2000(H)",
+      "etf": "KODEX 미국러셀2000(H)",
+      "code": "280930",
+      "sector": "주식",
+      "old_w": 7.5,
+      "new_w": 7.2,
+      "delta": -0.3,
+      "action": "유지"
+    },
+    {
+      "ticker": "S&P500(미국)",
+      "etf": "KODEX 미국S&P500",
+      "code": "379800",
+      "sector": "주식",
+      "old_w": 9.2,
+      "new_w": 8.9,
+      "delta": -0.3,
+      "action": "유지"
+    }
+  ]
+}
