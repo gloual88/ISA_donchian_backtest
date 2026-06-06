@@ -8,7 +8,10 @@ matplotlib 의존 없이 순수 데이터만 반환. 대시보드 서비스/prec
   asof, params, cash_pct, metrics, positions[], buy_today[], stop_today[],
   near_stop[], equity(Series), kospi(Series)
 
-파라미터: ISA 그리드서치 강건 롱온리값 (N=252,p=0.4,lag=1,cap=2,K=1,short=0,LP)
+파라미터: RSI 강건설정 선택값 (N=189,p=0.4,lag=2,cap=2,K=1,short=0,LP)
+  (2026-06-06 rsi_portfolio_optimizer가 OOS fold 일관성으로 선택. 직전 운영값
+   N=252/lag=1 대비 worst-fold 개선·미래참조 없음. 그리드 in-sample best는 lag=0
+   미래참조라 기각)
 """
 import numpy as np
 import pandas as pd
@@ -17,7 +20,8 @@ import mulvaney_replica as M
 from mulvaney_isa_backtest import ISA_DEF, build_krw_panel
 
 TRADING_DAYS = 252
-PARAMS = dict(N=252, p=0.4, lag=1, cap=2, K=1, short=0.0)
+# RSI 강건설정 선택값 (2026-06-06, rsi_portfolio_optimizer). 직전 운영값: N=252,lag=1
+PARAMS = dict(N=189, p=0.4, lag=2, cap=2, K=1, short=0.0)
 
 KRX_NAME = {
     "S&P500(미국)": ("KODEX 미국S&P500", "379800"),

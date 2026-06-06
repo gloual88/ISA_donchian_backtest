@@ -6,7 +6,7 @@ ISA 추세전략 대시보드 (Mulvaney 복제 · 롱온리)
 
 전략: 돈치안 6개월 돌파 + 추적손절(미드라인) + loss-parity + 피라미딩,
       롱온리(개인 공매도 불가), 무레버리지(현금계좌). KRW 기준.
-파라미터: ISA 그리드서치 강건값 N=252·p=0.4·lag=1·cap=2·K=1·short=0·LP.
+파라미터: RSI 강건설정 선택값 N=189·p=0.4·lag=2·cap=2·K=1·short=0·LP (2026-06-06).
 
 실행: streamlit run app.py   (또는 run.bat)
 """
