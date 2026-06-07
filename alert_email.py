@@ -51,10 +51,10 @@ def _transition_html():
         return ""
     return (f"<h3>🔄 전략 전환 리밸런싱 (1회성)</h3>"
             f"<p style='font-size:0.85rem;color:#555'>전략 변경 "
-            f"N={fp['N']}/lag={fp['lag']} → <b>N={tp['N']}/lag={tp['lag']}</b> "
-            f"(기준일 {t['asof']}). 구→신 전환을 위한 일회성 비중 조정이며, "
-            f"아래 '오늘의 액션'(신전략 자생 신호)과는 별개입니다.</p>"
-            f"<ul>{items}</ul>")
+            f"{fp.get('scheme', '')} → <b>{tp.get('scheme', '')}</b> "
+            f"(N={tp['N']}/lag={tp['lag']}, 기준일 {t['asof']}). 구→신 전환을 "
+            f"위한 일회성 비중 조정이며, 아래 '오늘의 액션'(신전략 자생 신호)과는 "
+            f"별개입니다.</p><ul>{items}</ul>")
 
 
 LABELS = {"strategy": "전략", "sixty_forty": "60/40",

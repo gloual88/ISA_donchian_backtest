@@ -1,61 +1,73 @@
 {
   "from_params": {
-    "N": 252,
+    "N": 189,
     "p": 0.4,
-    "lag": 1,
+    "lag": 2,
     "cap": 2,
-    "K": 1
+    "K": 1,
+    "scheme": "LP(12종)"
   },
   "to_params": {
     "N": 189,
     "p": 0.4,
     "lag": 2,
     "cap": 2,
-    "K": 1
+    "K": 1,
+    "scheme": "HLP(27종)"
   },
-  "asof": "2026-06-06",
-  "old_cash": 0,
-  "new_cash": 0,
-  "generated_kst": "2026-06-06 09:08 KST",
+  "asof": "2026-06-07",
+  "old_cash": -0.0,
+  "new_cash": 0.1,
+  "generated_kst": "2026-06-08 08:37 KST",
   "rows": [
-    {
-      "ticker": "신흥국(H)",
-      "etf": "PLUS 신흥국MSCI(합성 H)",
-      "code": "195980",
-      "sector": "주식",
-      "old_w": 11.6,
-      "new_w": 5.5,
-      "delta": -6.1,
-      "action": "매도"
-    },
-    {
-      "ticker": "WTI원유(H)",
-      "etf": "KODEX WTI원유선물(H)",
-      "code": "261220",
-      "sector": "원자재",
-      "old_w": 12.9,
-      "new_w": 17.9,
-      "delta": 5.0,
-      "action": "매수"
-    },
     {
       "ticker": "KOSPI200",
       "etf": "KODEX 200",
       "code": "069500",
       "sector": "주식",
-      "old_w": 21.4,
-      "new_w": 25.7,
-      "delta": 4.3,
-      "action": "매수"
+      "old_w": 29.5,
+      "new_w": 6.9,
+      "delta": -22.6,
+      "action": "매도"
     },
     {
       "ticker": "미국채10년",
       "etf": "TIGER 미국채10년선물",
       "code": "305080",
       "sector": "금리",
-      "old_w": 21.6,
-      "new_w": 19.1,
-      "delta": -2.5,
+      "old_w": 18.3,
+      "new_w": 36.8,
+      "delta": 18.5,
+      "action": "매수"
+    },
+    {
+      "ticker": "미국채30년",
+      "etf": "PLUS 미국채30년액티브",
+      "code": "464470",
+      "sector": "금리",
+      "old_w": 6.4,
+      "new_w": 12.8,
+      "delta": 6.4,
+      "action": "매수"
+    },
+    {
+      "ticker": "S&P500(미국)",
+      "etf": "KODEX 미국S&P500",
+      "code": "379800",
+      "sector": "주식",
+      "old_w": 8.2,
+      "new_w": 1.8,
+      "delta": -6.4,
+      "action": "매도"
+    },
+    {
+      "ticker": "러셀2000(H)",
+      "etf": "KODEX 미국러셀2000(H)",
+      "code": "280930",
+      "sector": "주식",
+      "old_w": 7.2,
+      "new_w": 1.3,
+      "delta": -5.9,
       "action": "매도"
     },
     {
@@ -63,40 +75,110 @@
       "etf": "TIGER 미국나스닥100",
       "code": "133690",
       "sector": "주식",
-      "old_w": 8.1,
-      "new_w": 7.7,
-      "delta": -0.4,
-      "action": "유지"
+      "old_w": 7.2,
+      "new_w": 1.6,
+      "delta": -5.6,
+      "action": "매도"
     },
     {
-      "ticker": "미국채30년",
-      "etf": "PLUS 미국채30년액티브",
-      "code": "464470",
-      "sector": "금리",
-      "old_w": 7.8,
-      "new_w": 8.2,
-      "delta": 0.4,
-      "action": "유지"
-    },
-    {
-      "ticker": "러셀2000(H)",
-      "etf": "KODEX 미국러셀2000(H)",
-      "code": "280930",
+      "ticker": "한국IT",
+      "etf": "TIGER 200 IT",
+      "code": "139260",
       "sector": "주식",
-      "old_w": 7.5,
-      "new_w": 7.2,
-      "delta": -0.3,
-      "action": "유지"
+      "old_w": 0.0,
+      "new_w": 5.1,
+      "delta": 5.1,
+      "action": "신규편입"
     },
     {
-      "ticker": "S&P500(미국)",
-      "etf": "KODEX 미국S&P500",
-      "code": "379800",
+      "ticker": "신흥국(H)",
+      "etf": "PLUS 신흥국MSCI(합성 H)",
+      "code": "195980",
       "sector": "주식",
-      "old_w": 9.2,
-      "new_w": 8.9,
-      "delta": -0.3,
-      "action": "유지"
+      "old_w": 5.6,
+      "new_w": 1.0,
+      "delta": -4.6,
+      "action": "매도"
+    },
+    {
+      "ticker": "한국반도체",
+      "etf": "KODEX 반도체",
+      "code": "091160",
+      "sector": "주식",
+      "old_w": 0.0,
+      "new_w": 3.9,
+      "delta": 3.9,
+      "action": "신규편입"
+    },
+    {
+      "ticker": "한국증권",
+      "etf": "KODEX 증권",
+      "code": "102970",
+      "sector": "주식",
+      "old_w": 0.0,
+      "new_w": 3.8,
+      "delta": 3.8,
+      "action": "신규편입"
+    },
+    {
+      "ticker": "미국반도체",
+      "etf": "KODEX 미국반도체",
+      "code": "390390",
+      "sector": "주식",
+      "old_w": 0.0,
+      "new_w": 2.0,
+      "delta": 2.0,
+      "action": "신규편입"
+    },
+    {
+      "ticker": "한국건설",
+      "etf": "KODEX 건설",
+      "code": "117700",
+      "sector": "주식",
+      "old_w": 0.0,
+      "new_w": 1.9,
+      "delta": 1.9,
+      "action": "신규편입"
+    },
+    {
+      "ticker": "한국은행",
+      "etf": "KODEX 은행",
+      "code": "091170",
+      "sector": "주식",
+      "old_w": 0.0,
+      "new_w": 1.9,
+      "delta": 1.9,
+      "action": "신규편입"
+    },
+    {
+      "ticker": "한국2차전지",
+      "etf": "TIGER 2차전지테마",
+      "code": "305540",
+      "sector": "주식",
+      "old_w": 0.0,
+      "new_w": 1.3,
+      "delta": 1.3,
+      "action": "신규편입"
+    },
+    {
+      "ticker": "한국자동차",
+      "etf": "KODEX 자동차",
+      "code": "091180",
+      "sector": "주식",
+      "old_w": 0.0,
+      "new_w": 0.7,
+      "delta": 0.7,
+      "action": "신규편입"
+    },
+    {
+      "ticker": "WTI원유(H)",
+      "etf": "KODEX WTI원유선물(H)",
+      "code": "261220",
+      "sector": "원자재",
+      "old_w": 17.6,
+      "new_w": 17.1,
+      "delta": -0.5,
+      "action": "매도"
     }
   ]
 }

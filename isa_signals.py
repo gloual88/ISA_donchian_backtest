@@ -8,10 +8,10 @@ matplotlib 의존 없이 순수 데이터만 반환. 대시보드 서비스/prec
   asof, params, cash_pct, metrics, positions[], buy_today[], stop_today[],
   near_stop[], equity(Series), kospi(Series)
 
-파라미터: RSI 강건설정 선택값 (N=189,p=0.4,lag=2,cap=2,K=1,short=0,LP)
-  (2026-06-06 rsi_portfolio_optimizer가 OOS fold 일관성으로 선택. 직전 운영값
-   N=252/lag=1 대비 worst-fold 개선·미래참조 없음. 그리드 in-sample best는 lag=0
-   미래참조라 기각)
+파라미터: RSI 강건설정 (N=189,p=0.4,lag=2,cap=2,K=1,short=0, **HLP**)
+  유니버스: 크로스애셋 12종 + 업종 ETF 15종(미국반도체 + 한국 14업종) = 27종.
+  HLP(섹터 계층) 사이징으로 주식 과집중 방지(주식~33/금리~50/원자재~17).
+  (rsi_portfolio_optimizer가 OOS fold 일관성으로 선택)
 """
 import numpy as np
 import pandas as pd
@@ -20,8 +20,10 @@ import mulvaney_replica as M
 from mulvaney_isa_backtest import ISA_DEF, build_krw_panel
 
 TRADING_DAYS = 252
-# RSI 강건설정 선택값 (2026-06-06, rsi_portfolio_optimizer). 직전 운영값: N=252,lag=1
+# RSI 강건설정 선택값. 직전: N=252/lag1/12종 → N=189/lag2/27종(업종 확장)/HLP
 PARAMS = dict(N=189, p=0.4, lag=2, cap=2, K=1, short=0.0)
+# 사이징: 0=LP / 1=HLP(섹터 계층). 업종 확장으로 주식 과집중 방지 위해 HLP 채택(2026-06-08)
+SCHEME = 1
 
 KRX_NAME = {
     "S&P500(미국)": ("KODEX 미국S&P500", "379800"),
@@ -36,6 +38,22 @@ KRX_NAME = {
     "WTI원유(H)": ("KODEX WTI원유선물(H)", "261220"),
     "농산물(H)": ("KODEX 3대농산물선물(H)", "271060"),
     "미국달러선물": ("KODEX 미국달러선물", "261240"),
+    # ── 업종 ETF (2026-06-06) — KR 코드는 yf 티커 검증 완료, 미국반도체 코드는 매매 전 확인 ──
+    "미국반도체": ("KODEX 미국반도체", "390390"),
+    "한국반도체": ("KODEX 반도체", "091160"),
+    "한국IT": ("TIGER 200 IT", "139260"),
+    "한국2차전지": ("TIGER 2차전지테마", "305540"),
+    "한국자동차": ("KODEX 자동차", "091180"),
+    "한국은행": ("KODEX 은행", "091170"),
+    "한국증권": ("KODEX 증권", "102970"),
+    "한국헬스케어": ("KODEX 헬스케어", "266420"),
+    "한국바이오": ("KODEX 바이오", "244580"),
+    "한국에너지화학": ("KODEX 에너지화학", "117460"),
+    "한국철강": ("KODEX 철강", "117680"),
+    "한국건설": ("KODEX 건설", "117700"),
+    "한국운송": ("KODEX 운송", "140710"),
+    "한국필수소비재": ("TIGER 200 생활소비재", "139280"),
+    "한국경기소비재": ("TIGER 200 경기소비재", "139290"),
 }
 
 
@@ -70,6 +88,7 @@ def get_isa_signals():
     M.PYR_CAP = PARAMS["cap"]
     M.PYR_K = PARAMS["K"]
     M.SHORT_WEIGHT = PARAMS["short"]
+    M.SCHEME = SCHEME
     labels = list(ISA_DEF.keys())
     sectors = {}
     for lab in labels:

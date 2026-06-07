@@ -6,7 +6,7 @@ ISA 추세전략 대시보드 (Mulvaney 복제 · 롱온리)
 
 전략: 돈치안 6개월 돌파 + 추적손절(미드라인) + loss-parity + 피라미딩,
       롱온리(개인 공매도 불가), 무레버리지(현금계좌). KRW 기준.
-파라미터: RSI 강건설정 선택값 N=189·p=0.4·lag=2·cap=2·K=1·short=0·LP (2026-06-06).
+파라미터: N=189·p=0.4·lag=2·cap=2·K=1·short=0·HLP, 27종(크로스애셋12+업종15).
 
 실행: streamlit run app.py   (또는 run.bat)
 """
@@ -81,8 +81,8 @@ def render_transition():
     t = json.loads(p.read_text(encoding="utf-8"))
     fp, tp = t["from_params"], t["to_params"]
     st.markdown("### 🔄 전략 전환 리밸런싱 (1회성)")
-    st.info(f"전략 변경 N={fp['N']}/lag={fp['lag']} → "
-            f"**N={tp['N']}/lag={tp['lag']}** (기준일 {t['asof']}). 구→신 "
+    st.info(f"전략 변경 {fp.get('scheme', '')} → **{tp.get('scheme', '')}** "
+            f"(N={tp['N']}/lag={tp['lag']}, 기준일 {t['asof']}). 구→신 "
             "포트폴리오로 갈아타기 위해 오늘 조정할 비중입니다. "
             "※ 아래 '오늘의 액션'(신전략 자생 신호)과는 별개의 일회성 매매.")
     df = pd.DataFrame([{

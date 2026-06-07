@@ -22,30 +22,38 @@ import pandas as pd
 
 import mulvaney_replica as M
 from mulvaney_isa_backtest import ISA_DEF, build_krw_panel
-from isa_signals import KRX_NAME, _compute_nolev, PARAMS as NEW_PARAMS
+from isa_signals import (KRX_NAME, _compute_nolev,
+                         PARAMS as NEW_PARAMS, SCHEME as NEW_SCHEME)
 
 BASE = Path(__file__).resolve().parent
 OUT = BASE / "data" / "transition.json"
-OLD_DEFAULT = dict(N=252, p=0.4, lag=1, cap=2, K=1, short=0.0)
+
+# 직전 라이브 = 크로스애셋 12종 + LP (업종 확장·HLP 채택 전)
+ORIGINAL_12 = ["S&P500(미국)", "나스닥100", "러셀2000(H)", "신흥국(H)", "KOSPI200",
+               "미국채30년", "미국채10년", "금(H)", "은(H)", "WTI원유(H)",
+               "농산물(H)", "미국달러선물"]
+OLD_DEFAULT = dict(N=189, p=0.4, lag=2, cap=2, K=1, short=0.0)
 
 
-def _weights(high, low, close, cash_rate, cfg) -> tuple[dict, float, str]:
+def _weights(high, low, close, cash_rate, cfg, labels, scheme):
+    """labels 서브셋 + scheme(0=LP/1=HLP)로 비중 산출. 패널을 labels로 슬라이스해
+    TICKERS/컬럼 정합을 맞춘다(구=12종/LP, 신=27종/HLP)."""
+    h, lo, c = high[labels], low[labels], close[labels]
     M.N_LOOKBACK = cfg["N"]
     M.STOP_P = cfg["p"]
     M.EXEC_LAG = cfg["lag"]
     M.PYR_CAP = cfg["cap"]
     M.PYR_K = cfg["K"]
     M.SHORT_WEIGHT = cfg["short"]
-    labels = list(ISA_DEF.keys())
+    M.SCHEME = scheme
     sectors = {}
     for lab in labels:
         sectors.setdefault(ISA_DEF[lab][2], []).append(lab)
     M.UNIVERSE = sectors
     M.TICKERS = labels
-    sig = M.precompute_signals(high, low, close)
-    res = M.backtest(high, low, close, sig, cash_rate)
-    pos = res["positions"]
-    w, cash_pct = _compute_nolev(pos)
+    sig = M.precompute_signals(h, lo, c)
+    res = M.backtest(h, lo, c, sig, cash_rate)
+    w, cash_pct = _compute_nolev(res["positions"])
     asof = str(pd.Timestamp(res["asof"]).date())
     return {t: float(w.get(t, 0.0)) for t in w.index}, float(cash_pct), asof
 
@@ -66,8 +74,11 @@ def main(old_cfg: dict):
     print("[1/2] KRW 패널 + 구/신 비중 계산...")
     high, low, close, ksC = build_krw_panel()
     cash_rate = M.load_cash_rate(close.index)
-    old_w, old_cash, _ = _weights(high, low, close, cash_rate, old_cfg)
-    new_w, new_cash, asof = _weights(high, low, close, cash_rate, NEW_PARAMS)
+    # 구 = 12종/LP, 신 = 27종(전체)/HLP
+    old_w, old_cash, _ = _weights(high, low, close, cash_rate, old_cfg,
+                                  ORIGINAL_12, 0)
+    new_w, new_cash, asof = _weights(high, low, close, cash_rate, NEW_PARAMS,
+                                     list(ISA_DEF.keys()), NEW_SCHEME)
 
     tickers = set(old_w) | set(new_w)
     rows = []
@@ -82,9 +93,12 @@ def main(old_cfg: dict):
                          old_w=ow, new_w=nw, delta=d, action=_action(ow, nw, d)))
     rows.sort(key=lambda r: -abs(r["delta"]))
 
+    sch = {0: "LP", 1: "HLP"}
     payload = dict(
-        from_params={k: old_cfg[k] for k in ("N", "p", "lag", "cap", "K")},
-        to_params={k: NEW_PARAMS[k] for k in ("N", "p", "lag", "cap", "K")},
+        from_params={**{k: old_cfg[k] for k in ("N", "p", "lag", "cap", "K")},
+                     "scheme": "LP(12종)"},
+        to_params={**{k: NEW_PARAMS[k] for k in ("N", "p", "lag", "cap", "K")},
+                   "scheme": f"{sch.get(NEW_SCHEME, '?')}(27종)"},
         asof=asof,
         old_cash=round(max(old_cash, 0), 1),
         new_cash=round(max(new_cash, 0), 1),

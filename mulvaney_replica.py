@@ -75,6 +75,7 @@ SHORT_WEIGHT = 1.0        # 숏 비중 (100%)
 RISK_BUDGET = 0.15        # 15% * Equity / 시장수
 CASH_SPREAD = 0.01        # 담보현금 = RF - 100bps
 COST_BPS = 1.0            # 체결비용 (편도, bp) — 조정 가능
+SCHEME = 0                # 사이징: 0=LP(시장당 동일) / 1=HLP(섹터 계층)
 
 
 # ──────────────────────────────────────────────────────────────
@@ -152,6 +153,13 @@ def backtest(high, low, close, sig, cash_rate, start_equity=1.0):
     crate = cash_rate.values
     col_idx = {t: j for j, t in enumerate(cols)}
 
+    # HLP(섹터 계층) 사이징용 섹터 매핑 (UNIVERSE: 섹터→티커)
+    sec_names = list(UNIVERSE.keys())
+    sec_of = {tk: si for si, (_s, tks) in enumerate(UNIVERSE.items())
+              for tk in tks}
+    sector_ids = np.array([sec_of.get(t, 0) for t in cols], dtype=int)
+    n_sectors = len(sec_names)
+
     # 시장별 상태
     direction = np.zeros(len(cols))     # +1/-1/0
     entry_px = np.full(len(cols), np.nan)
@@ -192,6 +200,15 @@ def backtest(high, low, close, sig, cash_rate, start_equity=1.0):
             signed_prev[:] = 0
             continue
 
+        # HLP 사이징 분모용: 섹터별 활성 수 + 활성 섹터 수
+        sec_count = None
+        n_sec_active = 0
+        if SCHEME == 1:
+            sec_count = np.zeros(n_sectors)
+            for j in active:
+                sec_count[sector_ids[j]] += 1.0
+            n_sec_active = int((sec_count > 0).sum())
+
         # ── 3) 시장별 신호/스톱/피라미딩 갱신 ──
         for j in active:
             c = C[t, j]
@@ -205,7 +222,9 @@ def backtest(high, low, close, sig, cash_rate, start_equity=1.0):
                     trail_stop[j] = init_stop[j]
                     risk = c - init_stop[j]
                     if risk > 0:
-                        base_shares[j] = (RISK_BUDGET * equity / Nm) / risk
+                        div = (n_sec_active * sec_count[sector_ids[j]]
+                               if SCHEME == 1 else Nm)
+                        base_shares[j] = (RISK_BUDGET * equity / div) / risk
                         mult[j] = 1
                         entry_idx[j] = t
                     else:
@@ -217,8 +236,10 @@ def backtest(high, low, close, sig, cash_rate, start_equity=1.0):
                     trail_stop[j] = init_stop[j]
                     risk = init_stop[j] - c
                     if risk > 0:
+                        div = (n_sec_active * sec_count[sector_ids[j]]
+                               if SCHEME == 1 else Nm)
                         base_shares[j] = (SHORT_WEIGHT * RISK_BUDGET
-                                          * equity / Nm) / risk
+                                          * equity / div) / risk
                         mult[j] = 1
                         entry_idx[j] = t
                     else:
