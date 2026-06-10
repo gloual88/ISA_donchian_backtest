@@ -7,7 +7,16 @@ on:
   schedule:
     - cron: "30 7 * * 1-5"
     - cron: "0 10 * * 1-5"
-  workflow_dispatch: {}   # 수동 실행 버튼
+  workflow_dispatch:      # 수동 실행 — 정정 재발송 옵션
+    inputs:
+      subject_prefix:
+        description: "제목 접두 (정정 발송: [정정] )"
+        required: false
+        default: ""
+      force_email:
+        description: "중복방지 무시 강제 발송 (1)"
+        required: false
+        default: ""
 
 permissions:
   contents: write
@@ -40,6 +49,8 @@ jobs:
           DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
           NEAR_STOP_PCT: "3.0"
           ANCHOR_DATE: "2026-03-31"
+          SUBJECT_PREFIX: ${{ github.event.inputs.subject_prefix }}
+          FORCE_EMAIL: ${{ github.event.inputs.force_email }}
         run: python alert_email.py
 
       - name: Commit updated signals

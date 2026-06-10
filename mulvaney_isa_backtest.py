@@ -96,7 +96,10 @@ def build_krw_panel():
 
     fx = yf.download("KRW=X", start="1999-01-01", auto_adjust=True,
                      progress=False)
-    ks = yf.download("^KS200", start="1999-01-01", auto_adjust=True,
+    # KOSPI200 벤치마크: yfinance ^KS200 은 일부 일자에 잘못된 틱(예: 2026-06-10
+    # +3.42% — 실제 -4.87%) → 거래 가능 ETF KODEX200(069500.KS)로 대체.
+    # 069500.KS 일간/누적이 pykrx 권위 데이터와 일치(검증 2026-06-10).
+    ks = yf.download("069500.KS", start="1999-01-01", auto_adjust=True,
                      progress=False)
 
     # 기준일을 '오늘'까지: 미국 마지막 종가 이후의 KR/FX 거래일을 꼬리에 추가

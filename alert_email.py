@@ -89,7 +89,8 @@ def build_report(asof, s, curves):
         d = (st['cum_return'] - stats['sixty_forty']['cum_return']) * 100
         excess = f"기준일 이후 초과수익(전략−60/40): <b>{d:+.1f}%p</b> · "
 
-    subj = (f"[ISA 추세전략] 일일 리포트 {asof} — "
+    prefix = os.getenv("SUBJECT_PREFIX", "")   # 예: "[정정] " — 정정 발송 표시
+    subj = (f"{prefix}[ISA 추세전략] 일일 리포트 {asof} — "
             f"기준일이후 {st['cum_return']*100:+.1f}% / 액션 {n_act}건")
 
     html = f"""

@@ -104,7 +104,9 @@ def get_isa_signals():
     eq = res["equity"][valid]
     eq = eq / eq.iloc[0]
     kospi = ksC.reindex(eq.index).ffill()
-    kospi = kospi / kospi.iloc[0]
+    # 069500(KODEX200)은 2002 상장 → 전략 시작 이전은 NaN. 첫 '유효'값으로 정규화
+    # (iloc[0]가 NaN이면 전체 NaN 되는 버그 방지). 벤치마크는 데이터 있는 구간만.
+    kospi = kospi / kospi.dropna().iloc[0]
     asof = pd.Timestamp(res["asof"])
 
     sr, kr = eq.pct_change().fillna(0), kospi.pct_change().fillna(0)
@@ -164,6 +166,7 @@ def get_isa_signals():
         sixty_forty=sf,
         ew_basket=ew,
         kospi=kospi,
+        prices=close,   # 종목별 최근 수익률 계산용(precompute 직렬화 화이트리스트에 없어 안전)
     )
 
 
