@@ -47,6 +47,26 @@ import mulvaney_replica as M
 
 BASE_DIR = Path(__file__).resolve().parent
 TRADING_DAYS = 252
+
+
+def _yf_dl(tickers, *, start="1999-01-01", retries=4, base_sleep=3.0):
+    """yfinance 다운로드 재시도(CI 러너에서 Yahoo가 IP를 간헐 차단/빈응답 → 단발
+    호출 시 precompute 실패의 주원인). 빈 결과도 실패로 간주, 선형 백오프 재시도."""
+    import time
+    last = "?"
+    for attempt in range(1, retries + 1):
+        try:
+            df = yf.download(tickers, start=start, auto_adjust=True,
+                             progress=False, threads=False)
+            if df is not None and not df.empty:
+                return df
+            last = "빈 응답(empty DataFrame)"
+        except Exception as e:           # noqa: BLE001 — 재시도 위해 포괄 포착
+            last = f"{type(e).__name__}: {e}"
+        if attempt < retries:
+            time.sleep(base_sleep * attempt)     # 3s, 6s, 9s 백오프
+    raise RuntimeError(
+        f"yfinance 다운로드 실패({tickers!r}) — {retries}회 시도, 마지막: {last}")
 plt.rcParams["font.family"] = "Malgun Gothic"
 plt.rcParams["axes.unicode_minus"] = False
 
@@ -90,17 +110,14 @@ ISA_DEF = {
 def build_krw_panel():
     us = sorted({v[0] for v in ISA_DEF.values()
                  if v[0] not in ("^KS200", "KRW=X")})
-    raw = yf.download(us, start="1999-01-01", auto_adjust=True,
-                      progress=False)
+    raw = _yf_dl(us)
     Hu, Lu, Cu = raw["High"], raw["Low"], raw["Close"]
 
-    fx = yf.download("KRW=X", start="1999-01-01", auto_adjust=True,
-                     progress=False)
+    fx = _yf_dl("KRW=X")
     # KOSPI200 벤치마크: yfinance ^KS200 은 일부 일자에 잘못된 틱(예: 2026-06-10
     # +3.42% — 실제 -4.87%) → 거래 가능 ETF KODEX200(069500.KS)로 대체.
     # 069500.KS 일간/누적이 pykrx 권위 데이터와 일치(검증 2026-06-10).
-    ks = yf.download("069500.KS", start="1999-01-01", auto_adjust=True,
-                     progress=False)
+    ks = _yf_dl("069500.KS")
 
     # 기준일을 '오늘'까지: 미국 마지막 종가 이후의 KR/FX 거래일을 꼬리에 추가
     # (해외 자산은 직전 미국 종가를 ffill — 미국장 미개장 반영). 데이터 사정상

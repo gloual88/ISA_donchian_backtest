@@ -42,6 +42,7 @@ jobs:
         run: python precompute_signals.py
 
       - name: Send action alert (email)
+        continue-on-error: true   # 이메일 실패가 시그널 커밋을 막지 않도록 분리(데이터 파이프라인 보호)
         env:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
