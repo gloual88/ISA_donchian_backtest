@@ -138,7 +138,12 @@ def precompute_signals(high, low, close):
 # ──────────────────────────────────────────────────────────────
 # 포트폴리오 백테스트 (마크투마켓)
 # ──────────────────────────────────────────────────────────────
-def backtest(high, low, close, sig, cash_rate, start_equity=1.0):
+def backtest(high, low, close, sig, cash_rate, start_equity=1.0,
+             overlay=None, record_weights=False):
+    # record_weights=True: 일별 원시 리스크패리티 목표비중(롱, 합>1 가능) 행렬을
+    #   결과 dict['weights']로 반환. 재투자 정책(A/B/C) 백테스트용. 기본 off(무영향).
+    # overlay: (T, n_cols) 배열(기본 None=무영향). 보유 사이즈에 곱하는 계수로
+    # AI 포지션 필터(예: 포지셔닝 극단 시 트림) 백테스트에 쓴다. 하위호환.
     dates = close.index
     T = len(dates)
     cols = TICKERS
@@ -178,6 +183,7 @@ def backtest(high, low, close, sig, cash_rate, start_equity=1.0):
     n_active = np.zeros(T, dtype=int)
     trade_returns = []                  # 청산된 거래 수익(R 아님, % of entry notional)
     exits_today = []                    # 최종 바에서 손절 청산된 종목
+    Wlog = np.zeros((T, len(cols))) if record_weights else None
 
     for t in range(T):
         # ── 1) 전일 포지션 손익 + 담보현금 ──
@@ -287,6 +293,8 @@ def backtest(high, low, close, sig, cash_rate, start_equity=1.0):
         nl = ns = 0
         for j in range(len(cols)):
             new_signed = direction[j] * base_shares[j] * mult[j]
+            if overlay is not None:
+                new_signed *= overlay[t, j]
             # 체결비용 (보유주식 변화분)
             if COST_BPS > 0 and not math.isnan(C[t, j]):
                 dshares = abs(new_signed - signed_prev[j])
@@ -302,6 +310,12 @@ def backtest(high, low, close, sig, cash_rate, start_equity=1.0):
         gross_exp[t] = gross / equity if equity > 0 else 0.0
         n_long[t] = nl
         n_short[t] = ns
+        if Wlog is not None:
+            eq_now = equity if equity > 0 else 1.0
+            for j in range(len(cols)):
+                cj = C[t, j]
+                Wlog[t, j] = (signed_prev[j] * cj / eq_now
+                              if not math.isnan(cj) else 0.0)
 
     # ── 최종일 보유 포지션 스냅샷 ──
     last_t = T - 1
@@ -349,6 +363,8 @@ def backtest(high, low, close, sig, cash_rate, start_equity=1.0):
         equity_final=equity,
         asof=dates[last_t],
         exits_today=exits_today,
+        weights=(pd.DataFrame(Wlog, index=dates, columns=cols)
+                 if Wlog is not None else None),
     )
 
 

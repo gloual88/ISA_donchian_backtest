@@ -24,6 +24,13 @@ TRADING_DAYS = 252
 PARAMS = dict(N=189, p=0.4, lag=2, cap=2, K=1, short=0.0)
 # 사이징: 0=LP / 1=HLP(섹터 계층). 업종 확장으로 주식 과집중 방지 위해 HLP 채택(2026-06-08)
 SCHEME = 1
+# 손절 후 재투자 + 과집중 방지 상한 (redeploy_grid 최적: 종목 20% 단독, 2026-07-09)
+#   비운 비중을 남은 보유 종목에 재분배(현금 드래그 제거)하되 단일종목 20% 상한.
+#   자산군 상한은 저분산 국면에서 강제 현금 드래그로 수익을 깎아 미적용(S_CAP=1).
+#   백테스트: Sharpe 0.75→0.86 / MDD -25%→-18% / 누적 유사(11.3×→10.1×).
+REDEPLOY = True
+P_CAP = 0.20   # 종목별 비중 상한
+S_CAP = 1.00   # 자산군 상한 미적용(1.0=off)
 
 KRX_NAME = {
     "S&P500(미국)": ("KODEX 미국S&P500", "379800"),
@@ -67,6 +74,42 @@ def _compute_nolev(pos):
     return w, round(100.0 - w.sum(), 1)
 
 
+def _allocate(w_raw, p_cap, s_cap, sec_ids, n_sec):
+    """원시 리스크패리티 비중 → 종목상한·자산군상한을 지키는 재투자 배분.
+    비운 비중을 여유 있는 기존 보유 종목에 비례 재분배하되, 두 상한을 넘지 않는다.
+    상한 때문에 100%를 채울 수 없으면 나머지는 현금으로 둔다(합<1 허용)."""
+    w = np.clip(w_raw, 0, None).astype(float)
+    if w.sum() <= 0:
+        return w
+    w = w / w.sum()                       # 목표 비율(합1)
+    held = w > 1e-12
+    for _ in range(300):
+        w0 = w.copy()
+        w = np.minimum(w, p_cap)          # 종목 상한
+        if s_cap < 1.0:                   # 자산군 상한
+            for k in range(n_sec):
+                m = sec_ids == k
+                ssum = w[m].sum()
+                if ssum > s_cap + 1e-12:
+                    w[m] *= s_cap / ssum
+        deficit = 1.0 - w.sum()           # 부족분 재분배(여유·상한·기존보유 내)
+        if deficit > 1e-9:
+            pos_head = np.clip(p_cap - w, 0, None)
+            if s_cap < 1.0:
+                used = np.array([w[sec_ids == k].sum() for k in range(n_sec)])
+                sec_head = np.clip(s_cap - used, 0, None)[sec_ids]
+                room = np.minimum(pos_head, sec_head)
+            else:
+                room = pos_head
+            room[~held] = 0.0             # 새 종목 생성 금지(신규매수는 신호로만)
+            if room.sum() <= 1e-12:
+                break                     # 여유 없음 → 나머지는 현금
+            w = w + np.minimum(room, deficit * room / room.sum())
+        elif np.abs(w - w0).max() < 1e-9:
+            break
+    return w
+
+
 def _metrics(eq):
     r = eq.pct_change().fillna(0)
     n = len(eq)
@@ -98,11 +141,36 @@ def get_isa_signals():
     high, low, close, ksC = build_krw_panel()
     cash_rate = M.load_cash_rate(close.index)
     sig = M.precompute_signals(high, low, close)
-    res = M.backtest(high, low, close, sig, cash_rate)
-
+    res = M.backtest(high, low, close, sig, cash_rate, record_weights=True)
     valid = res["n_active"] > 0
-    eq = res["equity"][valid]
+
+    # ── 손절 후 재투자 + 상한 배분 (종목 P_CAP / 자산군 S_CAP) ──
+    # 원시 리스크패리티 목표비중을, 비운 자리를 남은 종목에 재분배하고 과집중을
+    # 상한으로 제어하는 정책비중으로 변환 → 전략 수익·지표·표시비중이 모두 일치.
+    order = list(M.TICKERS)
+    secs = sorted({ISA_DEF[lb][2] for lb in order})
+    sid = {sn: i for i, sn in enumerate(secs)}
+    sec_ids = np.array([sid[ISA_DEF[lb][2]] for lb in order])
+    Wm = res["weights"][order].values
+    Rm = close[order].pct_change().fillna(0.0).values
+    crv = np.asarray(cash_rate.values if hasattr(cash_rate, "values")
+                     else cash_rate, dtype=float)
+    if REDEPLOY:
+        Pm = np.vstack([_allocate(Wm[t], P_CAP, S_CAP, sec_ids, len(secs))
+                        for t in range(len(Wm))])
+    else:                                    # 재투자 미적용(현행): 상한만 축소
+        g = Wm.sum(axis=1, keepdims=True)
+        Pm = np.where(g > 1, Wm / np.where(g > 0, g, 1.0), Wm)
+    Psum = Pm.sum(axis=1)
+    port = np.zeros(len(Wm))
+    port[1:] = ((Pm[:-1] * Rm[1:]).sum(axis=1)
+                + np.clip(1 - Psum[:-1], 0, None) * crv[1:])
+    eq = pd.Series(np.cumprod(1 + np.nan_to_num(port)), index=close.index)
+    eq = eq[valid]
     eq = eq / eq.iloc[0]
+    pol_w = {order[j]: round(float(Pm[-1, j] * 100), 1)
+             for j in range(len(order))}
+    pol_cash = round(float((1 - Psum[-1]) * 100), 1)
     kospi = ksC.reindex(eq.index).ffill()
     # 069500(KODEX200)은 2002 상장 → 전략 시작 이전은 NaN. 첫 '유효'값으로 정규화
     # (iloc[0]가 NaN이면 전체 NaN 되는 버그 방지). 벤치마크는 데이터 있는 구간만.
@@ -126,7 +194,7 @@ def get_isa_signals():
     sf = sf / sf.iloc[0]
 
     pos = res["positions"].copy()
-    nl_w, cash_pct = _compute_nolev(pos)
+    cash_pct = pol_cash
 
     positions = []
     for _, r in pos.iterrows():
@@ -141,7 +209,7 @@ def get_isa_signals():
             r_mult=(float(r["R배수"]) if pd.notna(r["R배수"]) else None),
             entry_vs_cur_pct=round(
                 float(r["진입가"]) / float(r["현재가"]) * 100 - 100, 1),
-            isa_weight_pct=float(nl_w.get(tk, 0.0)),
+            isa_weight_pct=pol_w.get(tk, 0.0),
         ))
     positions.sort(key=lambda x: -x["isa_weight_pct"])
 
