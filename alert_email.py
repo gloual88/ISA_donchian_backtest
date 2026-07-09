@@ -57,6 +57,40 @@ def _transition_html():
             f"별개입니다.</p><ul>{items}</ul>")
 
 
+def _portfolio_html(s):
+    """현재 포트폴리오 현황 — 보유 종목·자산군·비중·미실현·스톱여유."""
+    pos = s.get("positions", [])
+    if not pos:
+        return ""
+    rows = ""
+    for p in pos:
+        ur = p.get("unreal_pct", 0.0)
+        uc = "#16a34a" if ur >= 0 else "#dc2626"
+        room = p.get("stop_room_pct", 0.0)
+        rc = "#f59e0b" if room < NEAR else "#555"       # 손절 임박은 주황
+        code = p.get("code", "")
+        etf = p.get("etf", p.get("label", ""))
+        name = f"{etf} ({code})" if code else etf
+        rows += (
+            f"<tr><td><b>{p.get('label', '')}</b><br>"
+            f"<span style='font-size:0.78rem;color:#888'>{name}</span></td>"
+            f"<td align=right>{p.get('sector', '')}</td>"
+            f"<td align=right><b>{p.get('isa_weight_pct', 0):.1f}%</b></td>"
+            f"<td align=right><b style='color:{uc}'>{ur:+.1f}%</b></td>"
+            f"<td align=right style='color:{rc}'>{room:.1f}%</td></tr>")
+    cash = max(s.get("cash_pct", 0), 0)
+    return (
+        f"<h3>📊 현재 포트폴리오 현황 ({len(pos)}종목 · 현금 {cash:.0f}%)</h3>"
+        f"<table cellpadding='7' style='border-collapse:collapse;"
+        f"font-size:0.88rem'>"
+        f"<tr style='background:#f3f0ff'><th align=left>종목</th>"
+        f"<th>자산군</th><th>비중</th><th>미실현</th><th>스톱여유</th></tr>"
+        f"{rows}</table>"
+        f"<p style='font-size:0.78rem;color:#888;margin-top:4px'>"
+        f"비중=ISA 무레버리지 기준 · <span style='color:#f59e0b'>주황</span>은 "
+        f"손절선에 가까운(&lt;{NEAR:.0f}%) 포지션</p>")
+
+
 LABELS = {"strategy": "전략", "sixty_forty": "60/40",
           "ew_basket": "동일가중바스켓", "kospi": "KOSPI200(참고)"}
 
@@ -108,6 +142,7 @@ def build_report(asof, s, curves):
       <p style="font-size:0.85rem;color:#555">{excess}
         보유 {s['n_positions']}종목 · 현금 {max(s['cash_pct'], 0):.0f}%</p>
 
+      {_portfolio_html(s)}
       {_transition_html()}
       <h3>🔔 오늘의 액션 ({n_act}건)</h3>
       <p style="margin:4px 0;color:#16a34a"><b>🟢 신규 매수</b></p>
