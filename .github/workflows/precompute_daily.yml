@@ -2,11 +2,11 @@ name: Daily Signal Precompute
 
 # 평일 한국장 마감 후 — 백업 포함 2회 예약(GitHub cron 지연/누락 대비).
 # 같은 종가일(asof)로는 alert_email이 1통만 발송(중복 방지 가드)하므로 안전.
-#   07:30 UTC = 16:30 KST (1차) / 10:00 UTC = 19:00 KST (백업)
+#   09:30 UTC = 18:30 KST (1차) / 11:00 UTC = 20:00 KST (백업)
 on:
   schedule:
-    - cron: "30 7 * * 1-5"
-    - cron: "0 10 * * 1-5"
+    - cron: "30 9 * * 1-5"
+    - cron: "0 11 * * 1-5"
   workflow_dispatch:      # 수동 실행 — 정정 재발송 옵션
     inputs:
       subject_prefix:
