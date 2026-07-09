@@ -177,9 +177,9 @@ def get_isa_signals():
     kospi = kospi / kospi.dropna().iloc[0]
     asof = pd.Timestamp(res["asof"])
 
-    sr, kr = eq.pct_change().fillna(0), kospi.pct_change().fillna(0)
-    scal = kr.std() / sr.std() if sr.std() > 0 else 1.0
-    eq_sc = (1 + sr * scal).cumprod()
+    # 전략 수익률은 실제 무레버리지 포트폴리오(정책 eq) 그대로 표시한다.
+    # (구 방식은 KOSPI 변동성에 맞춘 변동성매칭 eq_sc를 썼는데, 저변동 전략을
+    #  ×1.4 이상 부풀려 raw 벤치마크와 불공정 비교·오해를 유발 → 폐기, 2026-07-09)
 
     # ── 벤치마크: 동일가중 바스켓 + 60/40 (KOSPI는 참고) ──
     rets = close.pct_change()
@@ -224,13 +224,13 @@ def get_isa_signals():
         params=PARAMS,
         cash_pct=cash_pct,
         n_positions=len(positions),
-        metrics=dict(strategy=_metrics(eq_sc), sixty_forty=_metrics(sf),
+        metrics=dict(strategy=_metrics(eq), sixty_forty=_metrics(sf),
                      ew_basket=_metrics(ew), kospi=_metrics(kospi)),
         positions=positions,
         buy_today=buy_today,
         stop_today=stop_today,
         near_stop=near_stop,
-        equity=eq_sc,
+        equity=eq,
         sixty_forty=sf,
         ew_basket=ew,
         kospi=kospi,
