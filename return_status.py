@@ -6,7 +6,7 @@ data/signals.json(사전계산) 또는 라이브에서 자본곡선을 읽어
 지정 기준일 이후 누적수익률 / 당일수익률 / 기준일 이후 MDD를 산출.
 전략 + KOSPI200 벤치마크 함께.
 
-기준일 변경: 환경변수 ANCHOR_DATE (기본 2026-03-31)
+기준일 변경: 환경변수 ANCHOR_DATE (기본 2026-06-02 · 포트폴리오 시작 시점)
 실행: PYTHONIOENCODING=utf-8 python return_status.py
 """
 import os
@@ -18,7 +18,7 @@ from pathlib import Path
 import pandas as pd
 
 BASE = Path(__file__).resolve().parent
-ANCHOR = os.getenv("ANCHOR_DATE", "2026-03-31")
+ANCHOR = os.getenv("ANCHOR_DATE", "2026-06-02")
 
 
 CURVE_KEYS = [("strategy", "equity"), ("sixty_forty", "sixty_forty"),

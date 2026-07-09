@@ -49,7 +49,7 @@ jobs:
           EMAIL_TO: ${{ secrets.EMAIL_TO }}
           DASHBOARD_URL: ${{ vars.DASHBOARD_URL }}
           NEAR_STOP_PCT: "3.0"
-          ANCHOR_DATE: "2026-03-31"
+          ANCHOR_DATE: "2026-06-02"
           SUBJECT_PREFIX: ${{ github.event.inputs.subject_prefix }}
           FORCE_EMAIL: ${{ github.event.inputs.force_email }}
         run: python alert_email.py
