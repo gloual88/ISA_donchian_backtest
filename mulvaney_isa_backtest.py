@@ -124,6 +124,12 @@ def build_krw_panel():
     # KR 종가가 아직이면 자동으로 직전일까지만(몇 분 지연 허용).
     master = Cu.dropna(how="all").index
     last_us = master[-1]
+    # 수익률 리포트가 '미국 종가 확정일'까지만 집계하도록 노출.
+    # Cu에는 한국상장(.KS) ETF도 섞여 있어 master[-1]은 한국 종가일일 수 있으므로
+    # 미국 티커만으로 따로 구한다.
+    global LAST_US_DATE
+    us_cols = [c for c in Cu.columns if not str(c).endswith(".KS")]
+    LAST_US_DATE = str(Cu[us_cols].dropna(how="all").index[-1].date())
     tail = ks.dropna(how="all").index.union(fx.dropna(how="all").index)
     tail = tail[tail > last_us]
     if len(tail):

@@ -96,7 +96,8 @@ LABELS = {"strategy": "전략", "sixty_forty": "60/40",
 
 
 def build_report(asof, s, curves):
-    stats = {n: compute_status(c, ANCHOR) for n, c in curves.items()}
+    us_end = s.get("us_last_date")      # 미국 종가 확정일 — 이 날까지만 집계
+    stats = {n: compute_status(c, ANCHOR, us_end) for n, c in curves.items()}
     st = stats["strategy"]
     buys = s.get("buy_today", [])
     stops = s.get("stop_today", [])
@@ -131,7 +132,9 @@ def build_report(asof, s, curves):
     <div style="font-family:'Malgun Gothic',sans-serif;max-width:600px">
       <h2 style="color:#7c3aed">📈 ISA 추세전략 일일 리포트</h2>
       <p style="color:#555">기준일 <b>{st['anchor_date']}</b> →
-         현재 <b>{st['last_date']}</b> ({st['trading_days']} 거래일)</p>
+         현재 <b>{st['last_date']}</b> ({st['trading_days']} 거래일)
+         <span style="font-size:0.78rem;color:#888">· 미국 종가 확정일 기준
+         (발송 시점 미국장 미개장 → 당일 수익률은 직전 미국장 마감분)</span></p>
 
       <h3>💹 수익률 현황</h3>
       <table cellpadding="7" style="border-collapse:collapse;font-size:0.9rem">

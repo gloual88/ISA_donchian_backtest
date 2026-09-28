@@ -286,7 +286,8 @@ def main():
           "동일가중바스켓": s.get("ew_basket"), "KOSPI200(참고)": s.get("kospi")}
     rc = {k: v for k, v in rc.items() if v is not None}
     if "전략" in rc:
-        rstats = {k: compute_status(v, ANCHOR) for k, v in rc.items()}
+        us_end = s.get("us_last_date")   # 미국 종가 확정일(없으면 전체 구간)
+        rstats = {k: compute_status(v, ANCHOR, us_end) for k, v in rc.items()}
         st0 = rstats["전략"]
         st.markdown(f"### 💹 수익률 현황 — 기준일 {st0['anchor_date']} 이후 "
                     f"({st0['trading_days']}거래일)")

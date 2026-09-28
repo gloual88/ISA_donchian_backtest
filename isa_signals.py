@@ -172,8 +172,10 @@ def get_isa_signals():
              for j in range(len(order))}
     pol_cash = round(float((1 - Psum[-1]) * 100), 1)
     kospi = ksC.reindex(eq.index).ffill()
-    # 069500(KODEX200)은 2002 상장 → 전략 시작 이전은 NaN. 첫 '유효'값으로 정규화
-    # (iloc[0]가 NaN이면 전체 NaN 되는 버그 방지). 벤치마크는 데이터 있는 구간만.
+    # 069500(KODEX200) yfinance 데이터는 2007-01-29부터 → 전략 시작(2001~)
+    # 이전 구간은 NaN. 첫 '유효'값으로 정규화(iloc[0]가 NaN이면 전체 NaN 되는
+    # 버그 방지). _metrics()는 이 leading NaN도 positional iloc[0]로 읽어
+    # CAGR/Calmar가 NaN이 되므로, 호출부에서 kospi.dropna()로 걸러서 넘긴다.
     kospi = kospi / kospi.dropna().iloc[0]
     asof = pd.Timestamp(res["asof"])
 
@@ -219,13 +221,17 @@ def get_isa_signals():
                        key=lambda x: x["stop_room_pct"])
     stop_today = res.get("exits_today", [])
 
+    import mulvaney_isa_backtest as _B
     return dict(
         asof=str(asof_d),
+        # 미국 ETF 프록시의 마지막 실제 종가일. asof(한국 기준일)가 이보다 뒤면
+        # 그 꼬리 구간의 미국 자산 수익률은 ffill(=0)이라 수익률 집계에서 제외한다.
+        us_last_date=getattr(_B, "LAST_US_DATE", None),
         params=PARAMS,
         cash_pct=cash_pct,
         n_positions=len(positions),
         metrics=dict(strategy=_metrics(eq), sixty_forty=_metrics(sf),
-                     ew_basket=_metrics(ew), kospi=_metrics(kospi)),
+                     ew_basket=_metrics(ew), kospi=_metrics(kospi.dropna())),
         positions=positions,
         buy_today=buy_today,
         stop_today=stop_today,

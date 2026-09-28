@@ -48,7 +48,7 @@ def main():
     s = get_isa_signals()
 
     payload = {k: s[k] for k in (
-        "asof", "params", "cash_pct", "n_positions", "metrics",
+        "asof", "us_last_date", "params", "cash_pct", "n_positions", "metrics",
         "positions", "buy_today", "stop_today", "near_stop")}
     payload["equity"] = _series_to_obj(s["equity"])
     payload["sixty_forty"] = _series_to_obj(s["sixty_forty"])
