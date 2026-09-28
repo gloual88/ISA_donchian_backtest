@@ -13,9 +13,11 @@ data/signals.json을 읽어 매일 이메일 발송:
 
 실행: python alert_email.py
 """
+import json
 import os
 import smtplib
 import ssl
+from pathlib import Path
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
@@ -55,6 +57,58 @@ def _transition_html():
             f"(N={tp['N']}/lag={tp['lag']}, 기준일 {t['asof']}). 구→신 전환을 "
             f"위한 일회성 비중 조정이며, 아래 '오늘의 액션'(신전략 자생 신호)과는 "
             f"별개입니다.</p><ul>{items}</ul>")
+
+
+RULE_CHANGE = Path(__file__).resolve().parent / "data" / "rule_change.json"
+
+
+def _load_rule_change():
+    """1회성 규칙 변경 안내 — 아직 발송 전(sent_asof 없음)일 때만 반환."""
+    if not RULE_CHANGE.exists():
+        return None
+    r = json.loads(RULE_CHANGE.read_text(encoding="utf-8"))
+    return None if r.get("sent_asof") else r
+
+
+def _rule_change_html(s):
+    """비중 배분 규칙 변경 안내 + 변경 전(발행)→후(오늘) 비중 표. 구독자에게 1회만."""
+    r = _load_rule_change()
+    if not r:
+        return ""
+    old = r.get("old_weights", {})
+    new = {p["label"]: float(p.get("isa_weight_pct", 0)) for p in s.get("positions", [])}
+    rows = ""
+    for lab in sorted(set(old) | set(new), key=lambda k: -max(old.get(k, 0), new.get(k, 0))):
+        o, n = old.get(lab, 0.0), new.get(lab, 0.0)
+        d = n - o
+        if abs(d) < 0.05:
+            continue
+        act = "청산" if n < 0.05 else ("신규" if o < 0.05 else ("축소" if d < 0 else "확대"))
+        c = "#16a34a" if d > 0 else "#dc2626"
+        rows += (f"<tr><td>{lab}</td><td align=right>{o:.1f}%</td>"
+                 f"<td align=right>{n:.1f}%</td>"
+                 f"<td align=right><b style='color:{c}'>{act} {d:+.1f}%p</b></td></tr>")
+    o_cash = max(100 - sum(old.values()), 0)
+    n_cash = max(s.get("cash_pct", 0), 0)
+    rows += (f"<tr style='color:#555'><td>현금</td><td align=right>{o_cash:.1f}%</td>"
+             f"<td align=right>{n_cash:.1f}%</td>"
+             f"<td align=right>{n_cash - o_cash:+.1f}%p</td></tr>")
+    return (f"<h3>🔄 {r.get('title', '비중 배분 규칙 변경')}</h3>"
+            f"<p style='font-size:0.85rem;color:#555'>{r.get('effective_note', '')} "
+            f"기존에는 청산분이 남은 종목으로 재분배되어 비중이 부풀려져 있었고, "
+            f"이번에 새 규칙 기준으로 1회 조정됩니다(변경 전 = {r.get('old_asof', '')} 발행).</p>"
+            f"<table cellpadding='6' style='border-collapse:collapse;font-size:0.86rem'>"
+            f"<tr style='background:#f3f0ff'><th align=left>종목</th><th>변경 전</th>"
+            f"<th>변경 후</th><th>조정</th></tr>{rows}</table>")
+
+
+def _mark_rule_change_sent(asof):
+    """발송 성공 후 1회성 안내를 종료 처리(다음 메일부터 미표시)."""
+    r = _load_rule_change()
+    if r:
+        r["sent_asof"] = str(asof)
+        RULE_CHANGE.write_text(json.dumps(r, ensure_ascii=False, indent=2),
+                               encoding="utf-8")
 
 
 def _portfolio_html(s):
@@ -147,6 +201,7 @@ def build_report(asof, s, curves):
       <p style="font-size:0.85rem;color:#555">{excess}
         보유 {s['n_positions']}종목 · 현금 {max(s['cash_pct'], 0):.0f}%</p>
 
+      {_rule_change_html(s)}
       {_portfolio_html(s)}
       {_transition_html()}
       <h3>🔔 오늘의 액션 ({n_act}건)</h3>
@@ -224,6 +279,7 @@ def main():
     if sent > 0 and signals_asof:
         state.write_text(signals_asof, encoding="utf-8")
         print(f"발송 기록 갱신: {state.name} = {signals_asof}")
+        _mark_rule_change_sent(signals_asof)   # 규칙 변경 안내는 1회만
 
 
 if __name__ == "__main__":

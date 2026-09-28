@@ -32,6 +32,17 @@ REDEPLOY = True
 P_CAP = 0.20   # 종목별 비중 상한
 S_CAP = 1.00   # 자산군 상한 미적용(1.0=off)
 
+# 비중 배분 방식 (2026-09-28 변경)
+#   "hold_cash" : 손절로 비운 비중은 현금으로 두고, 신규 편입/피라미딩 때만 사용한다.
+#                 기존 보유 종목의 비중은 진입(추가) 시점에 확정 → 다른 종목이 청산돼도
+#                 자동으로 커지지 않는다. 신규 비중 = 원시 리스크패리티 × min(1, 1/총노출),
+#                 종목 P_CAP 상한, 잔여현금 한도 내.
+#                 백테스트(2001~2026-09): Sharpe 0.78→0.90 / MDD -26.9%→-12.7% /
+#                 CAGR 8.5%→7.4% / 평균현금 28%→50%. (재분배 정책은 청산분이 남은 종목·
+#                 위험자산으로 되돌아가 6~7월 KOSPI 급락을 100% 투자로 맞은 문제)
+#   "redeploy"  : 종전(2026-07-09~) — 비운 비중을 남은 보유 종목에 재분배.
+ALLOC_MODE = "hold_cash"
+
 KRX_NAME = {
     "S&P500(미국)": ("KODEX 미국S&P500", "379800"),
     "나스닥100": ("TIGER 미국나스닥100", "133690"),
@@ -110,6 +121,34 @@ def _allocate(w_raw, p_cap, s_cap, sec_ids, n_sec):
     return w
 
 
+def _allocate_hold_cash(raw, shares, p_cap):
+    """청산분은 현금 유지, 신규 편입/피라미딩 때만 비중 확정.
+
+    raw   : (T, n) 일별 원시 리스크패리티 명목비중(엔진, 합>1 가능)
+    shares: (T, n) 일별 보유수량(엔진) — 신규/피라미딩(수량 증가)·청산 판별용
+    반환   : (T, n) 정책비중(합≤1, 나머지 현금). 비중은 이벤트 사이 일정(일일 리밸런스).
+    """
+    T, n = raw.shape
+    W = np.zeros((T, n))
+    prev = np.zeros(n)
+    for t in range(T):
+        held = shares[t] > 1e-12
+        kept = prev * held                                  # 청산 종목은 0(현금)
+        pv = shares[t - 1] if t > 0 else np.zeros(n)
+        event = held & (shares[t] > pv * (1 + 1e-9) + 1e-12)   # 신규/피라미딩
+        g = raw[t][held].sum()
+        f = min(1.0, 1.0 / g) if g > 0 else 0.0
+        target = np.minimum(raw[t] * f, p_cap)
+        add = np.clip(target - kept, 0, None) * event
+        room = max(1.0 - kept.sum(), 0.0)                   # 잔여현금 한도
+        if room <= 0:
+            add[:] = 0.0
+        elif add.sum() > room:
+            add *= room / add.sum()
+        W[t] = prev = kept + add
+    return W
+
+
 def _metrics(eq):
     r = eq.pct_change().fillna(0)
     n = len(eq)
@@ -144,9 +183,9 @@ def get_isa_signals():
     res = M.backtest(high, low, close, sig, cash_rate, record_weights=True)
     valid = res["n_active"] > 0
 
-    # ── 손절 후 재투자 + 상한 배분 (종목 P_CAP / 자산군 S_CAP) ──
-    # 원시 리스크패리티 목표비중을, 비운 자리를 남은 종목에 재분배하고 과집중을
-    # 상한으로 제어하는 정책비중으로 변환 → 전략 수익·지표·표시비중이 모두 일치.
+    # ── 정책비중 배분 (ALLOC_MODE: hold_cash=청산분 현금 유지 / redeploy=재분배) ──
+    # 원시 리스크패리티 목표비중을 종목 상한(P_CAP)을 지키는 정책비중으로 변환 →
+    # 전략 수익·지표·표시비중이 모두 일치.
     order = list(M.TICKERS)
     secs = sorted({ISA_DEF[lb][2] for lb in order})
     sid = {sn: i for i, sn in enumerate(secs)}
@@ -155,7 +194,10 @@ def get_isa_signals():
     Rm = close[order].pct_change().fillna(0.0).values
     crv = np.asarray(cash_rate.values if hasattr(cash_rate, "values")
                      else cash_rate, dtype=float)
-    if REDEPLOY:
+    if ALLOC_MODE == "hold_cash":            # 청산분 현금 유지 + 20% 상한
+        Sm = res["shares"][order].values
+        Pm = _allocate_hold_cash(np.clip(Wm, 0, None), Sm, P_CAP)
+    elif REDEPLOY:                           # 종전: 청산분을 남은 종목에 재분배
         Pm = np.vstack([_allocate(Wm[t], P_CAP, S_CAP, sec_ids, len(secs))
                         for t in range(len(Wm))])
     else:                                    # 재투자 미적용(현행): 상한만 축소

@@ -184,6 +184,7 @@ def backtest(high, low, close, sig, cash_rate, start_equity=1.0,
     trade_returns = []                  # 청산된 거래 수익(R 아님, % of entry notional)
     exits_today = []                    # 최종 바에서 손절 청산된 종목
     Wlog = np.zeros((T, len(cols))) if record_weights else None
+    Slog = np.zeros((T, len(cols))) if record_weights else None   # 일별 보유수량(신규/피라미딩 구분용)
 
     for t in range(T):
         # ── 1) 전일 포지션 손익 + 담보현금 ──
@@ -316,6 +317,7 @@ def backtest(high, low, close, sig, cash_rate, start_equity=1.0,
                 cj = C[t, j]
                 Wlog[t, j] = (signed_prev[j] * cj / eq_now
                               if not math.isnan(cj) else 0.0)
+                Slog[t, j] = signed_prev[j]
 
     # ── 최종일 보유 포지션 스냅샷 ──
     last_t = T - 1
@@ -365,6 +367,8 @@ def backtest(high, low, close, sig, cash_rate, start_equity=1.0,
         exits_today=exits_today,
         weights=(pd.DataFrame(Wlog, index=dates, columns=cols)
                  if Wlog is not None else None),
+        shares=(pd.DataFrame(Slog, index=dates, columns=cols)
+                if Slog is not None else None),
     )
 
 
