@@ -32,6 +32,8 @@ def load_curves():
         d = json.loads(cache.read_text(encoding="utf-8"))
         curves = {}
         for name, key in CURVE_KEYS:
+            if name == "strategy" and "live_equity" in d:
+                key = "live_equity"     # 발행 비중 기록 기반 실적(재작성 안 됨)
             if key in d:
                 curves[name] = pd.Series(
                     d[key]["values"], index=pd.to_datetime(d[key]["dates"]))

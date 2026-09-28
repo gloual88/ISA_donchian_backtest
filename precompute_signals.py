@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 
 from isa_signals import get_isa_signals
+from track_record import update_record, live_curve
 
 BASE = Path(__file__).resolve().parent
 OUT = BASE / "data" / "signals.json"
@@ -50,6 +51,12 @@ def main():
     payload = {k: s[k] for k in (
         "asof", "us_last_date", "params", "cash_pct", "n_positions", "metrics",
         "positions", "buy_today", "stop_today", "near_stop")}
+    # 실적 곡선: 매일 발행된 비중을 기록(append-only)하고 그 기록으로 계산 →
+    # 규칙·데이터가 바뀌어도 과거 수익률이 재작성되지 않는다. (equity=백테스트 재계산)
+    rec = update_record(s["asof"], s["positions"])
+    live = live_curve(s["prices"], s["cash_rate"], rec)
+    if len(live):
+        payload["live_equity"] = _series_to_obj(live)
     payload["equity"] = _series_to_obj(s["equity"])
     payload["sixty_forty"] = _series_to_obj(s["sixty_forty"])
     payload["ew_basket"] = _series_to_obj(s["ew_basket"])

@@ -240,6 +240,7 @@ def get_isa_signals():
         sixty_forty=sf,
         ew_basket=ew,
         kospi=kospi,
+        cash_rate=cash_rate,   # 실적곡선(track_record.live_curve)용 — 직렬화 제외
         prices=close,   # 종목별 최근 수익률 계산용(precompute 직렬화 화이트리스트에 없어 안전)
     )
 

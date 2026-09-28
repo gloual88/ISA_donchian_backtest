@@ -31,7 +31,8 @@ def load_signals():
     if cache.exists():
         try:
             d = json.loads(cache.read_text(encoding="utf-8"))
-            for key in ("equity", "sixty_forty", "ew_basket", "kospi"):
+            for key in ("equity", "live_equity", "sixty_forty",
+                        "ew_basket", "kospi"):
                 if key in d and isinstance(d[key], dict):
                     d[key] = pd.Series(
                         d[key]["values"],
@@ -282,7 +283,9 @@ def main():
     # ── 💹 수익률 현황 (기준일 이후) — 맨 하단 ──
     st.markdown("---")
     from return_status import compute_status, ANCHOR
-    rc = {"전략": s.get("equity"), "60/40": s.get("sixty_forty"),
+    live = s.get("live_equity")     # 발행 비중 기록 기반 실적(없으면 백테스트 곡선)
+    rc = {"전략": live if live is not None and len(live) else s.get("equity"),
+          "60/40": s.get("sixty_forty"),
           "동일가중바스켓": s.get("ew_basket"), "KOSPI200(참고)": s.get("kospi")}
     rc = {k: v for k, v in rc.items() if v is not None}
     if "전략" in rc:

@@ -142,6 +142,8 @@ def build_report(asof, s, curves):
           <th></th><th>당일</th><th>기준일 이후 누적</th><th>기준후 MDD</th></tr>
         {rows_html}
       </table>
+      <p style="font-size:0.78rem;color:#888;margin:2px 0">전략 = 매일 발행된
+         비중 기준 실적(기록 고정, 사후 재계산 없음)</p>
       <p style="font-size:0.85rem;color:#555">{excess}
         보유 {s['n_positions']}종목 · 현금 {max(s['cash_pct'], 0):.0f}%</p>
 
