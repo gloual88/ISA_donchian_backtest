@@ -143,6 +143,17 @@ def main():
     k[3].metric("변동성", f"{mst['vol']*100:.1f}%")
     k[4].metric("보유 종목", f"{s['n_positions']}개")
     k[5].metric("현금", f"{max(s['cash_pct'],0):.0f}%")
+    # 2026 급락 구간은 현 배분규칙(hold_cash) 채택 계기 = 사후 표본 → 제외 지표 병기
+    eq_pre = s["equity"].loc[:"2025-12-31"]
+    if len(eq_pre) > 252:
+        r_pre = eq_pre.pct_change().dropna()
+        sh_pre = r_pre.mean() / r_pre.std() * 252 ** 0.5
+        cagr_pre = (eq_pre.iloc[-1] / eq_pre.iloc[0]) ** (252 / len(eq_pre)) - 1
+        mdd_pre = (eq_pre / eq_pre.cummax() - 1).min()
+        st.caption(
+            f"참고 · 2026년 제외({eq_pre.index[0]:%Y}~2025): Sharpe {sh_pre:.2f} · "
+            f"CAGR {cagr_pre*100:.1f}% · MDD {mdd_pre*100:.1f}%  — 현 비중 배분 규칙은 "
+            f"2026년 급락 이후 채택돼, 2026년 포함 지표에는 사후 선택 효과가 섞여 있습니다.")
 
     st.markdown("---")
 
